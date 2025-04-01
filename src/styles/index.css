@@ -947,6 +947,14 @@ a {
     filter: saturate(0) brightness(16);
   }
 }
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
 .splash__section {
   background: rgb(0, 0, 255);
   position: fixed;
@@ -982,15 +990,19 @@ a {
   width: 50vw;
 }
 .splash__section .splash__logo img {
+  animation: rotate 24s linear infinite;
   width: 100%;
 }
 .splash__section h1 {
   font-size: 10px;
-  scale: 0.8;
+  scale: 0.7;
+  transform-origin: right bottom;
   color: rgb(235, 235, 235);
   opacity: 0.7;
   position: absolute;
   bottom: 20px;
+  line-height: 1;
+  font-weight: 500;
   right: 20px;
   -webkit-clip-path: inset(0 0 0 0);
           clip-path: inset(0 0 0 0);
@@ -1073,6 +1085,7 @@ a {
 }
 .head__area .label__area .small__mark img {
   width: 20px;
+  animation: rotate 16s linear infinite;
 }
 
 .brand__list {
