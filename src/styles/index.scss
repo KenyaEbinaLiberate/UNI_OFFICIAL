@@ -189,11 +189,11 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: $white;
+  background: rgba($black, 0.2);
   padding: 4px;
   color: $blue;
-
-  border: 1px solid rgba($black, 0.2);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba($white, 1);
   cursor: pointer;
 
   display: flex;
@@ -206,6 +206,9 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
   bottom: 0;
   scale: 0.75;
   opacity: 0;
+  span {
+    width: 9px;
+  }
 }
 
 #musicPlayer:hover {
@@ -223,20 +226,22 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
   width: calc(100% - 80px);
   height: 32px;
   border-radius: 8px;
-  background: $white;
+  background: rgba($black, 0.2);
   display: flex;
   flex-flow: row;
   align-items: center;
   padding: 0 16px;
   justify-content: space-around;
-  border: 1px solid rgba($black, 0.2);
+  border: 1px solid rgba($white, 1);
   transition: all 0.3s ease-in-out;
   z-index: 1000;
   scale: 0.75;
   opacity: 0;
   bottom: 0;
+  backdrop-filter: blur(4px);
   animation: fadeInAnm 0.6s ease-in-out 3.5s forwards 1;
   &.is__open {
+    backdrop-filter: blur(16px) brightness(0.6);
     height: auto;
     flex-flow: column;
     align-items: flex-start;
@@ -246,6 +251,7 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
   .navi__arrow {
     width: 10px;
     margin-right: 12px;
+    filter: $whiteFilter;
     img {
       width: 100%;
     }
@@ -254,7 +260,7 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
     width: calc(100% - 40px);
     p {
       font-size: 10px;
-      color: $blue;
+      color: $white;
       line-height: 1;
       font-weight: 500;
     }
@@ -266,6 +272,7 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
     position: absolute;
     bottom: 14px;
     right: 16px;
+    filter: $whiteFilter;
     &::before {
       content: "";
       position: absolute;
@@ -282,6 +289,7 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
   }
   &.is__open {
     padding: 48px 16px;
+
     .menu__wrap {
       display: flex;
       flex-flow: column;
@@ -294,9 +302,10 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        background: $blue;
+        background: rgba($black, 0.4);
         padding: 16px;
         border-radius: 8px;
+        border: 1px solid rgba($white, 0.1);
         p {
           color: $white;
           font-size: 14px;
@@ -307,6 +316,10 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
           filter: $whiteFilter;
           rotate: 90deg;
           width: 10px;
+          overflow: hidden;
+          img {
+            animation: arrowAnm 2s ease-in-out 0s infinite;
+          }
         }
       }
       .text__link {
@@ -321,20 +334,50 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
           position: absolute;
           width: 100%;
           height: 1px;
-          background: $blue;
+          background: $white;
           bottom: 0;
           left: 0;
           z-index: -1;
         }
         p {
-          color: $blue;
+          color: $white;
           font-size: 12px;
           line-height: 1;
           font-weight: 600;
         }
         figure {
+          filter: $whiteFilter;
           rotate: 90deg;
           width: 10px;
+          overflow: hidden;
+          img {
+            animation: arrowAnm 2s ease-in-out 0s infinite;
+          }
+        }
+      }
+      .detail__wrap {
+        display: flex;
+        width: 100%;
+        margin-top: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+        .label__text {
+          width: calc(50% - 8px);
+          font-size: 10px;
+          color: rgba(255, 255, 255, 0.4);
+          line-height: 1.4;
+          font-weight: 500;
+          scale: 1;
+        }
+        #time {
+          scale: (0.8);
+          transform-origin: left;
+          font-size: 10px;
+          color: rgba(255, 255, 255, 0.4);
+          line-height: 1.4;
+          font-weight: 500;
+
+          width: 100%;
         }
       }
     }

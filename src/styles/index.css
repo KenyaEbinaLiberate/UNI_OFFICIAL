@@ -955,6 +955,36 @@ a {
     transform: rotate(360deg);
   }
 }
+@keyframes arrowAnm {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  10% {
+    transform: translateY(-15px);
+    opacity: 1;
+  }
+  15% {
+    transform: translateY(-15px);
+    opacity: 0;
+  }
+  20% {
+    transform: translateY(15px);
+    opacity: 0;
+  }
+  25% {
+    transform: translateY(15px);
+    opacity: 1;
+  }
+  30% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
 .splash__section {
   background: rgb(0, 0, 255);
   position: fixed;
@@ -1179,10 +1209,12 @@ a {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgb(255, 255, 255);
+  background: rgba(0, 0, 0, 0.2);
   padding: 4px;
   color: rgb(0, 0, 255);
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  -webkit-backdrop-filter: blur(4px);
+          backdrop-filter: blur(4px);
+  border: 1px solid white;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -1194,6 +1226,9 @@ a {
   bottom: 0;
   scale: 0.75;
   opacity: 0;
+}
+#musicPlayer span {
+  width: 9px;
 }
 
 #musicPlayer:hover {
@@ -1211,21 +1246,25 @@ a {
   width: calc(100% - 80px);
   height: 32px;
   border-radius: 8px;
-  background: rgb(255, 255, 255);
+  background: rgba(0, 0, 0, 0.2);
   display: flex;
   flex-flow: row;
   align-items: center;
   padding: 0 16px;
   justify-content: space-around;
-  border: 1px solid rgba(0, 0, 0, 0.2);
+  border: 1px solid white;
   transition: all 0.3s ease-in-out;
   z-index: 1000;
   scale: 0.75;
   opacity: 0;
   bottom: 0;
+  -webkit-backdrop-filter: blur(4px);
+          backdrop-filter: blur(4px);
   animation: fadeInAnm 0.6s ease-in-out 3.5s forwards 1;
 }
 .floating__navi.is__open {
+  -webkit-backdrop-filter: blur(16px) brightness(0.6);
+          backdrop-filter: blur(16px) brightness(0.6);
   height: auto;
   flex-flow: column;
   align-items: flex-start;
@@ -1235,6 +1274,7 @@ a {
 .floating__navi .navi__arrow {
   width: 10px;
   margin-right: 12px;
+  filter: brightness(0) grayscale(1) invert(1);
 }
 .floating__navi .navi__arrow img {
   width: 100%;
@@ -1244,7 +1284,7 @@ a {
 }
 .floating__navi .message__area p {
   font-size: 10px;
-  color: rgb(0, 0, 255);
+  color: rgb(255, 255, 255);
   line-height: 1;
   font-weight: 500;
 }
@@ -1255,6 +1295,7 @@ a {
   position: absolute;
   bottom: 14px;
   right: 16px;
+  filter: brightness(0) grayscale(1) invert(1);
 }
 .floating__navi .plus__icon::before {
   content: "";
@@ -1285,9 +1326,10 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgb(0, 0, 255);
+  background: rgba(0, 0, 0, 0.4);
   padding: 16px;
   border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 .floating__navi.is__open .menu__wrap .button p {
   color: rgb(255, 255, 255);
@@ -1299,6 +1341,10 @@ a {
   filter: brightness(0) grayscale(1) invert(1);
   rotate: 90deg;
   width: 10px;
+  overflow: hidden;
+}
+.floating__navi.is__open .menu__wrap .button figure img {
+  animation: arrowAnm 2s ease-in-out 0s infinite;
 }
 .floating__navi.is__open .menu__wrap .text__link {
   width: 100%;
@@ -1313,18 +1359,47 @@ a {
   position: absolute;
   width: 100%;
   height: 1px;
-  background: rgb(0, 0, 255);
+  background: rgb(255, 255, 255);
   bottom: 0;
   left: 0;
   z-index: -1;
 }
 .floating__navi.is__open .menu__wrap .text__link p {
-  color: rgb(0, 0, 255);
+  color: rgb(255, 255, 255);
   font-size: 12px;
   line-height: 1;
   font-weight: 600;
 }
 .floating__navi.is__open .menu__wrap .text__link figure {
+  filter: brightness(0) grayscale(1) invert(1);
   rotate: 90deg;
   width: 10px;
+  overflow: hidden;
+}
+.floating__navi.is__open .menu__wrap .text__link figure img {
+  animation: arrowAnm 2s ease-in-out 0s infinite;
+}
+.floating__navi.is__open .menu__wrap .detail__wrap {
+  display: flex;
+  width: 100%;
+  margin-top: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.floating__navi.is__open .menu__wrap .detail__wrap .label__text {
+  width: calc(50% - 8px);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1.4;
+  font-weight: 500;
+  scale: 1;
+}
+.floating__navi.is__open .menu__wrap .detail__wrap #time {
+  scale: 0.8;
+  transform-origin: left;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1.4;
+  font-weight: 500;
+  width: 100%;
 }/*# sourceMappingURL=index.css.map */
