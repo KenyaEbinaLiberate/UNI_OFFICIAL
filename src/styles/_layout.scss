@@ -1,0 +1,133 @@
+$pc-wqhd: 2560px;
+$pc-fullhd: 1920px;
+$pc-laptop: 1440px;
+$pc-hd: 1280px;
+$pc: 1024px;
+$tab: 991px;
+$smp: 767px;
+$smp-550: 550px;
+$smp-400: 400px;
+$smp-xs: 320px;
+
+@mixin wqhd {
+  @media only screen and (min-width: ($pc-fullhd + 1)) {
+    @content;
+  }
+}
+@mixin fullhd {
+  @media only screen and (max-width: ($pc-fullhd)) {
+    @content;
+  }
+}
+@mixin laptop {
+  @media only screen and (max-width: ($pc-laptop)) {
+    @content;
+  }
+}
+@mixin hd {
+  @media only screen and (max-width: ($pc-hd)) {
+    @content;
+  }
+}
+@mixin pc {
+  @media only screen and (max-width: ($pc)) {
+    @content;
+  }
+}
+@mixin pc_hover {
+  @media only screen and (min-width: ($pc + 1)) {
+    @content;
+  }
+}
+@mixin tab {
+  @media only screen and (max-width: ($tab)) {
+    @content;
+  }
+}
+@mixin smp_over {
+  @media only screen and (min-width: ($smp +1)) {
+    @content;
+  }
+}
+@mixin smp {
+  @media only screen and (max-width: ($smp)) {
+    @content;
+  }
+}
+@mixin smp_550 {
+  @media only screen and (max-width: ($smp-550)) {
+    @content;
+  }
+}
+@mixin smp_400 {
+  @media only screen and (max-width: ($smp-400)) {
+    @content;
+  }
+}
+@mixin smp_xs {
+  @media only screen and (max-width: ($smp-xs)) {
+    @content;
+  }
+}
+
+@media screen and (min-width: 768px) {
+  @function pxToVw($px, $width: 1920) {
+    @return ($px / $width) * 100vw;
+  }
+
+  :root {
+    @for $i from 0 through 400 {
+      --vw-size#{$i}: clamp(0px, #{pxToVw($i)}, #{$i}px);
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  @function pxToVw($px, $width: 375) {
+    @return ($px / $width) * 100vw;
+  }
+
+  :root {
+    @for $i from 0 through 375 {
+      --vw-size#{$i}: clamp(0px, #{pxToVw($i, 375)}, #{$i * 2.148}px);
+    }
+  }
+}
+/* visible or hidden
+--------------------------------------------------------------------------------*/
+@media only screen and (max-width: 991px) {
+  .visible-pc {
+    display: none !important;
+  }
+}
+@media only screen and (max-width: 767px) {
+  .visible-pctb {
+    display: none !important;
+  }
+}
+@media only screen and (min-width: 992px) {
+  .visible-tbsp {
+    display: none !important;
+  }
+}
+@media only screen and (min-width: 768px) {
+  .visible-sp {
+    display: none !important;
+  }
+}
+.visible-xs,
+.visible-sm,
+.visible-md,
+.visible-lg {
+  display: none !important;
+}
+
+@media (max-width: 767px) {
+  .hidden-xs {
+    display: none !important;
+  }
+
+  .visible-xs {
+    display: block !important;
+  }
+}

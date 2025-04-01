@@ -17,13 +17,26 @@
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xe3e3db);
+
+  // カメラの視野角を広げて、より画面いっぱいに表示
   const camera = new THREE.PerspectiveCamera(
-    45,
+    75, // より広い視野角
     window.innerWidth / window.innerHeight,
     0.1,
     100
   );
-  camera.position.z = 5;
+  camera.position.z = 1.96; // カメラを近づける
+
+  // 初期状態で非表示にする
+  renderer.domElement.style.opacity = '0';
+  renderer.domElement.style.transform = 'translateX(100px)';
+  renderer.domElement.style.transition = 'opacity 0.8s ease-out, transform 0.8s ease-out';
+
+  // フェードインアニメーション
+  setTimeout(() => {
+    renderer.domElement.style.opacity = '1';
+    renderer.domElement.style.transform = 'translateX(0)';
+  }, 500);
 
   const settings = {
     wheelSensitivity: 0.01,
@@ -37,13 +50,20 @@
     distortionSmoothing: 0.075,
   };
 
-  const slideWidth = 3.0;
-  const slideHeight = 1.5;
+  // スライドのサイズを画面サイズに基づいて計算
+  const calculateSlideSize = () => {
+    const aspectRatio = window.innerWidth / window.innerHeight;
+    const slideHeight = 3.0; // 基準となる高さ
+    const slideWidth = slideHeight * aspectRatio;
+    return { width: slideWidth, height: slideHeight };
+  };
+
+  let slideSize = calculateSlideSize();
   const gap = 0.1;
   const slideCount = 10;
   const imagesCount = 5;
-  const totalWidth = slideCount * (slideWidth + gap);
-  const slideUnit = slideWidth + gap;
+  const totalWidth = slideCount * (slideSize.width + gap);
+  const slideUnit = slideSize.width + gap;
 
   const slides = [];
   let currentPosition = 0;
@@ -66,7 +86,7 @@
   };
 
   const createSlide = (index) => {
-    const geometry = new THREE.PlaneGeometry(slideWidth, slideHeight, 32, 16);
+    const geometry = new THREE.PlaneGeometry(slideSize.width, slideSize.height, 32, 16);
 
     const colors = ["#FF5733", "#33FF57", "#3357FF", "#F3FF33", "#FF33F3"];
     const material = new THREE.MeshBasicMaterial({
@@ -75,7 +95,7 @@
     });
 
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.x = index * (slideWidth + gap);
+    mesh.position.x = index * (slideSize.width + gap);
     mesh.userData = {
       originalVertices: [...geometry.attributes.position.array],
       index,
@@ -92,13 +112,20 @@
         material.color.set(0xffffff);
         material.needsUpdate = true;
 
+        // テクスチャのサイズ調整をcover相当に
         const imgAspect = texture.image.width / texture.image.height;
-        const slideAspect = slideWidth / slideHeight;
+        const slideAspect = slideSize.width / slideSize.height;
 
         if (imgAspect > slideAspect) {
-          mesh.scale.y = slideAspect / imgAspect;
+          // 画像が横長の場合、高さに合わせる
+          const scale = slideAspect / imgAspect;
+          texture.repeat.set(scale, 1);
+          texture.offset.x = (1 - scale) / 2;
         } else {
-          mesh.scale.x = imgAspect / slideAspect;
+          // 画像が縦長の場合、幅に合わせる
+          const scale = imgAspect / slideAspect;
+          texture.repeat.set(1, scale);
+          texture.offset.y = (1 - scale) / 2;
         }
       },
       undefined,
@@ -109,6 +136,7 @@
     slides.push(mesh);
   };
 
+  // スライドの作成
   for (let i = 0; i < slideCount; i++) {
     createSlide(i);
   }
@@ -152,6 +180,7 @@
     mesh.geometry.computeVertexNormals();
   };
 
+  // イベントリスナー
   window.addEventListener("keydown", (e) => {
     if (e.key === "ArrowLeft") {
       targetPosition += slideUnit;
@@ -230,14 +259,80 @@
     }
   });
 
+  // リサイズ時の処理を改善
   window.addEventListener("resize", () => {
+    // ビューポートのサイズを更新
+    renderer.setSize(window.innerWidth, window.innerHeight);
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+
+    // スライドのサイズを更新
+    slideSize = calculateSlideSize();
+    slides.forEach((slide, index) => {
+      // ジオメトリを更新
+      const newGeometry = new THREE.PlaneGeometry(slideSize.width, slideSize.height, 32, 16);
+      slide.geometry.dispose();
+      slide.geometry = newGeometry;
+      slide.userData.originalVertices = [...newGeometry.attributes.position.array];
+
+      // 位置を更新
+      const newTotalWidth = slideCount * (slideSize.width + gap);
+      slide.position.x = (index * (slideSize.width + gap)) - (newTotalWidth / 2) + currentPosition;
+      slide.userData.targetX = slide.position.x - currentPosition;
+      slide.userData.currentX = slide.position.x;
+
+      // テクスチャの調整（もし存在すれば）
+      if (slide.material.map) {
+        const texture = slide.material.map;
+        const imgAspect = texture.image.width / texture.image.height;
+        const slideAspect = slideSize.width / slideSize.height;
+
+        if (imgAspect > slideAspect) {
+          const scale = slideAspect / imgAspect;
+          texture.repeat.set(scale, 1);
+          texture.offset.x = (1 - scale) / 2;
+        } else {
+          const scale = imgAspect / slideAspect;
+          texture.repeat.set(1, scale);
+          texture.offset.y = (1 - scale) / 2;
+        }
+      }
+    });
   });
+
+  // イージング関数の追加
+  const easeOutExpo = (x) => {
+    return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
+  };
+
+  // 初期アニメーションの設定
+  const initialAnimation = {
+    startDelay: 1200,
+    duration: 3000,
+    targetScroll: -25,
+    started: false,
+    startTime: 0
+  };
+
+  // アニメーション開始を遅延実行（フェードイン後に開始）
+  setTimeout(() => {
+    initialAnimation.started = true;
+    initialAnimation.startTime = performance.now();
+    targetDistortionFactor = 0.5;
+  }, initialAnimation.startDelay);
 
   const animate = (time) => {
     requestAnimationFrame(animate);
+
+    // 初期アニメーションの処理
+    if (initialAnimation.started) {
+      const elapsed = time - initialAnimation.startTime;
+      if (elapsed <= initialAnimation.duration) {
+        const progress = elapsed / initialAnimation.duration;
+        const eased = easeOutExpo(progress);
+        targetPosition = initialAnimation.targetScroll * eased;
+      }
+    }
 
     const deltaTime = lastTime ? (time - lastTime) / 1000 : 0.016;
     lastTime = time;
@@ -295,7 +390,7 @@
     renderer.render(scene, camera);
   };
 
-  animate();
+  animate(performance.now());
 </script>
 
 <style>
@@ -303,8 +398,11 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100dvh;
     z-index: -1;
+    opacity: 0;
+    transform: translateX(100px);
+    will-change: opacity, transform;
   }
 </style>
