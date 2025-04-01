@@ -392,30 +392,6 @@
   };
 
   animate(performance.now());
-
-  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  const audioElement = new Audio('/sound.mp3');
-  const source = audioContext.createMediaElementSource(audioElement);
-  const analyser = audioContext.createAnalyser();
-
-  analyser.fftSize = 128; // 周波数帯域の分割数
-  const bufferLength = analyser.frequencyBinCount; // 実際のデータ配列の長さ（fftSizeの半分）
-  const dataArray = new Uint8Array(bufferLength); // 周波数データを格納する配列
-
-  const drawVisualizer = () => {
-    analyser.getByteFrequencyData(dataArray); // 現在の周波数データを取得
-
-    for (let i = 0; i < barCount; i++) {
-      const barHeight = (dataArray[i] * barHeightMultiplier) || 0;
-      if (barHeight > 0) {
-        const y = (canvas.height / barCount) * i;
-        // グラデーションの作成
-        const gradient = ctx.createLinearGradient(0, y, barWidth, y);
-        gradient.addColorStop(0, `rgba(255, 255, 255, ${barHeight / 255 * 0.8})`);
-        gradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
-      }
-    }
-  }
 </script>
 
 <style>

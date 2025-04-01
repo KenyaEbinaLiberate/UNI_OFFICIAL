@@ -1,36 +1,18 @@
 <canvas id="audioVisualizer"></canvas>
 
 <script>
-  // Web Audio APIのセットアップ
-  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  const audioElement = new Audio('/sound.mp3');
-  const audioElement2 = new Audio('/sound2.mp3');
-  audioElement2.loop = true;
-
-  const source = audioContext.createMediaElementSource(audioElement);
-  const source2 = audioContext.createMediaElementSource(audioElement2);
-  const analyser = audioContext.createAnalyser();
-  analyser.fftSize = 512; // より多くの棘を表示（128 * 4）
-  const bufferLength = analyser.frequencyBinCount;
-  const dataArray = new Uint8Array(bufferLength);
-
-  source.connect(analyser);
-  source2.connect(analyser);
-  analyser.connect(audioContext.destination);
-
-  // 最初の音声が終わったら2番目の音声を再生
-  audioElement.addEventListener('ended', () => {
-    audioElement2.play();
-  });
-
-  // キャンバスのセットアップ
   const canvas = document.getElementById('audioVisualizer') as HTMLCanvasElement;
   const ctx = canvas.getContext('2d')!;
 
+  // Web Audio API の設定
+  let audioContext: AudioContext;
+  let analyser: AnalyserNode;
+  let dataArray: Uint8Array;
+
   // キャンバスのサイズ設定
   const setCanvasSize = () => {
-    canvas.width = 120; // CSSの幅に合わせる
-    canvas.height = window.innerHeight * 1.5; // 150dvhに合わせる
+    canvas.width = 120;
+    canvas.height = window.innerHeight * 1.5;
     canvas.style.height = '175dvh';
   };
 
@@ -42,70 +24,77 @@
 
   // ビジュアライザーの描画
   const drawVisualizer = () => {
-    analyser.getByteFrequencyData(dataArray);
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const maxBarWidth = canvas.width;
-    const barCount = bufferLength;
+    const barCount = analyser.frequencyBinCount;
     const barHeightBase = canvas.height / barCount;
 
+    analyser.getByteFrequencyData(dataArray);
+
     for (let i = 0; i < barCount; i++) {
-      const amplitude = dataArray[i] / 255;
+      const amplitude = dataArray[i] / 255.0; // 0-1の範囲に正規化
       const barWidth = Math.max(2, amplitude * maxBarWidth);
 
       if (amplitude > 0) {
         const y = barHeightBase * i;
         const centerY = y + (barHeightBase / 2);
 
-        // より細かい棘を描画
         ctx.beginPath();
-        ctx.moveTo(0, centerY - barHeightBase / 2.5); // 左上の点（高さを少し調整）
-        ctx.lineTo(0, centerY + barHeightBase / 2.5); // 左下の点（高さを少し調整）
-        ctx.lineTo(barWidth, centerY); // 右端（頂点）
+        ctx.moveTo(0, centerY - barHeightBase / 2.5);
+        ctx.lineTo(0, centerY + barHeightBase / 2.5);
+        ctx.lineTo(barWidth, centerY);
         ctx.closePath();
 
-        // グラデーションの設定（方向も反転）
         const gradient = ctx.createLinearGradient(0, centerY, barWidth, centerY);
-        gradient.addColorStop(0, 'rgba(0, 0, 255, 1)'); // 薄い青（底辺）
-        gradient.addColorStop(1, 'rgba(0, 0, 255, 1)'); // 濃い青（先端）
+        gradient.addColorStop(0, 'rgba(0, 0, 255, 1)');
+        gradient.addColorStop(1, 'rgba(0, 0, 255, 1)');
 
-        // 影の設定（右向きに変更）
         ctx.shadowColor = 'rgba(0, 0, 255, 0)';
         ctx.shadowBlur = 5;
-        ctx.shadowOffsetX = -2; // 負の値に変更して左側に影を付ける
+        ctx.shadowOffsetX = -2;
 
         ctx.fillStyle = gradient;
         ctx.fill();
 
-        // 影をリセット
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
         ctx.shadowOffsetX = 0;
       }
     }
 
-    animationId = requestAnimationFrame(drawVisualizer);
+    if (isPlaying) {
+      animationId = requestAnimationFrame(drawVisualizer);
+    }
   };
 
   // グローバルイベントリスナーを設定
   window.addEventListener('audioplayerstatechange', ((event: CustomEvent) => {
+    console.log('Audio player state changed:', event.detail);
     isPlaying = event.detail.isPlaying;
 
+    if (event.detail.audioContext && event.detail.analyser) {
+      audioContext = event.detail.audioContext;
+      analyser = event.detail.analyser;
+      dataArray = new Uint8Array(analyser.frequencyBinCount);
+    }
+
     if (isPlaying) {
-      if (audioContext.state === 'suspended') {
+      console.log('Starting visualization');
+      if (audioContext?.state === 'suspended') {
+        console.log('Resuming audio context');
         audioContext.resume();
       }
-      audioElement.play();
       drawVisualizer();
     } else {
-      audioElement.pause();
-      audioElement2.pause();
+      console.log('Stopping visualization');
       cancelAnimationFrame(animationId);
-      // キャンバスをクリア
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
   }) as EventListener);
+
+  // カスタムイベントが発火されているか確認するためのデバッグコード
+  console.log('AudioVisualizer component initialized');
 </script>
 
 <style>
@@ -115,7 +104,7 @@
     left: 0;
     width:300px;
     height: 125dvh;
-    z-index: 1;
+    z-index:999;
     pointer-events: none;
   }
 </style>

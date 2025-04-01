@@ -8,18 +8,35 @@
 
 <script>
   // Web Audio APIのセットアップ
-  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  const audioElement = new Audio('/sound.mp3');
-  audioElement.loop = true;
+  let audioContext: AudioContext;
+  let source: MediaElementAudioSourceNode;
+  let analyser: AnalyserNode;
+  let audioElement: HTMLAudioElement;
+  let dataArray: Uint8Array;
+  let bufferLength: number;
 
-  const source = audioContext.createMediaElementSource(audioElement);
-  const analyser = audioContext.createAnalyser();
-  analyser.fftSize = 256;
-  const bufferLength = analyser.frequencyBinCount;
-  const dataArray = new Uint8Array(bufferLength);
+  const initAudio = () => {
+    audioContext = new AudioContext();
+    audioElement = new Audio('/sound.mp3');
+    audioElement.loop = true;
 
-  source.connect(analyser);
-  analyser.connect(audioContext.destination);
+    source = audioContext.createMediaElementSource(audioElement);
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 128; // 周波数分解能を下げて反応性を向上
+    analyser.smoothingTimeConstant = 0.6; // スムージングを減らして反応性を向上
+    bufferLength = analyser.frequencyBinCount;
+    dataArray = new Uint8Array(bufferLength);
+
+    source.connect(analyser);
+    analyser.connect(audioContext.destination);
+  };
+
+  let isPlaying = false;
+  let animationId: number;
+
+  const player = document.getElementById('musicPlayer') as HTMLButtonElement;
+  const playIcon = player?.querySelector('.play-icon') as HTMLElement;
+  const pauseIcon = player?.querySelector('.pause-icon') as HTMLElement;
 
   // キャンバスのセットアップ
   const canvas = document.getElementById('visualizer') as HTMLCanvasElement;
@@ -37,24 +54,56 @@
   setCanvasSize();
   window.addEventListener('resize', setCanvasSize);
 
-  let isPlaying = false;
-  let animationId: number;
-
-  const player = document.getElementById('musicPlayer') as HTMLButtonElement;
-  const playIcon = player.querySelector('.play-icon') as HTMLElement;
-  const pauseIcon = player.querySelector('.pause-icon') as HTMLElement;
-
   // ビジュアライザーの描画
   const drawVisualizer = () => {
+    if (!analyser || !dataArray) return;
+
     analyser.getByteFrequencyData(dataArray);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const center = canvas.width / 2;
-    const radius = 35; // プレーヤーボタンの半径に合わせる
+    const radius = 35;
+
+    // 周波数帯域ごとの重み付け
+    const bassWeight = 2.0;    // 低音域 (0-100Hz)
+    const midWeight = 1.5;     // 中音域 (100-2000Hz)
+    const highWeight = 1.0;    // 高音域 (2000Hz以上)
+
+    // 周波数帯域ごとの平均値を計算
+    const getBandAverage = (start: number, end: number) => {
+      let sum = 0;
+      for (let i = start; i < end && i < bufferLength; i++) {
+        sum += dataArray[i];
+      }
+      return sum / (end - start);
+    };
+
+    // 各周波数帯域の平均値
+    const bassAvg = getBandAverage(0, 4);    // 低音域
+    const midAvg = getBandAverage(4, 12);    // 中音域
+    const highAvg = getBandAverage(12, bufferLength); // 高音域
 
     for (let i = 0; i < bufferLength; i++) {
-      const barHeight = dataArray[i] * 0.5;
+      // 周波数帯域に応じた重み付け
+      let weight = highWeight;
+      if (i < 4) {
+        weight = bassWeight;
+      } else if (i < 12) {
+        weight = midWeight;
+      }
+
+      // 周波数帯域ごとの平均値を反映
+      let bandAvg = highAvg;
+      if (i < 4) {
+        bandAvg = bassAvg;
+      } else if (i < 12) {
+        bandAvg = midAvg;
+      }
+
+      // より反応性の高い波形の計算
+      const amplitude = dataArray[i] / 255.0;  // 0-1の範囲に正規化
+      const barHeight = ((amplitude * weight * 50) + (bandAvg * 0.2)) * (isPlaying ? 1 : 0.3);
       const angle = (i * 2 * Math.PI) / bufferLength;
 
       const startX = center + (radius * Math.cos(angle));
@@ -65,7 +114,12 @@
       ctx.beginPath();
       ctx.moveTo(startX, startY);
       ctx.lineTo(endX, endY);
-      ctx.strokeStyle = `rgba(255, 255, 255, ${isPlaying ? 0.8 : 0.3})`;
+
+      // 周波数に応じた色の設定
+      const hue = (i / bufferLength) * 360;
+      ctx.strokeStyle = isPlaying
+        ? `hsla(${hue}, 80%, 60%, ${amplitude * 0.8 + 0.2})`
+        : `rgba(255, 255, 255, 0.3)`;
       ctx.lineWidth = 2;
       ctx.stroke();
     }
@@ -88,18 +142,39 @@
   const dispatchStateChange = (playing: boolean) => {
     window.dispatchEvent(
       new CustomEvent('audioplayerstatechange', {
-        detail: { isPlaying: playing }
+        detail: {
+          isPlaying: playing,
+          audioElement: audioElement,
+          audioContext: audioContext,
+          analyser: analyser
+        }
       })
     );
   };
 
   // 再生/停止の切り替え
-  player.addEventListener('click', () => {
+  player?.addEventListener('click', () => {
+    if (!audioContext) {
+      initAudio();
+    }
+
+    if (audioContext.state === 'suspended') {
+      audioContext.resume();
+    }
+
     isPlaying = !isPlaying;
+
+    if (isPlaying) {
+      audioElement.play();
+      drawVisualizer();
+    } else {
+      audioElement.pause();
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+    }
+
     updatePlayerUI();
     dispatchStateChange(isPlaying);
   });
-
-  // 初期描画
-  drawVisualizer();
 </script>
