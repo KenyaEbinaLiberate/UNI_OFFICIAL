@@ -11,24 +11,54 @@
   let audioContext: AudioContext;
   let source: MediaElementAudioSourceNode;
   let analyser: AnalyserNode;
-  let audioElement: HTMLAudioElement;
+  let audioElements: HTMLAudioElement[] = [];
+  let currentTrackIndex = 0;
   let dataArray: Uint8Array;
   let bufferLength: number;
 
   const initAudio = () => {
     audioContext = new AudioContext();
-    audioElement = new Audio('/sound.mp3');
-    audioElement.loop = true;
 
-    source = audioContext.createMediaElementSource(audioElement);
+    // 2つの音声ファイルを設定
+    audioElements = [
+      new Audio('/sound.mp3'),
+      new Audio('/sound2.mp3')
+    ];
+
+    // 両方の音声ファイルをループしない設定に
+    audioElements.forEach(audio => {
+      audio.loop = false;
+    });
+
+    // 最初の曲のソースを設定
+    source = audioContext.createMediaElementSource(audioElements[currentTrackIndex]);
     analyser = audioContext.createAnalyser();
-    analyser.fftSize = 128; // 周波数分解能を下げて反応性を向上
-    analyser.smoothingTimeConstant = 0.6; // スムージングを減らして反応性を向上
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.6;
     bufferLength = analyser.frequencyBinCount;
     dataArray = new Uint8Array(bufferLength);
 
     source.connect(analyser);
     analyser.connect(audioContext.destination);
+
+    // 曲が終わったら次の曲を再生
+    audioElements.forEach((audio, index) => {
+      audio.addEventListener('ended', () => {
+        if (isPlaying) {
+          currentTrackIndex = (index + 1) % audioElements.length;
+
+          // 前の曲のソースを切断
+          source.disconnect();
+
+          // 新しい曲のソースを設定
+          source = audioContext.createMediaElementSource(audioElements[currentTrackIndex]);
+          source.connect(analyser);
+
+          // 新しい曲を再生
+          audioElements[currentTrackIndex].play();
+        }
+      });
+    });
   };
 
   let isPlaying = false;
@@ -44,7 +74,7 @@
 
   // キャンバスのサイズ設定
   const setCanvasSize = () => {
-    const size = 150; // プレーヤーの周りの余白を含むサイズ
+    const size = 150;
     canvas.width = size;
     canvas.height = size;
     canvas.style.width = `${size}px`;
@@ -66,9 +96,9 @@
     const radius = 35;
 
     // 周波数帯域ごとの重み付け
-    const bassWeight = 2.0;    // 低音域 (0-100Hz)
-    const midWeight = 1.5;     // 中音域 (100-2000Hz)
-    const highWeight = 1.0;    // 高音域 (2000Hz以上)
+    const bassWeight = 2.0;
+    const midWeight = 1.5;
+    const highWeight = 1.0;
 
     // 周波数帯域ごとの平均値を計算
     const getBandAverage = (start: number, end: number) => {
@@ -80,31 +110,46 @@
     };
 
     // 各周波数帯域の平均値
-    const bassAvg = getBandAverage(0, 4);    // 低音域
-    const midAvg = getBandAverage(4, 12);    // 中音域
-    const highAvg = getBandAverage(12, bufferLength); // 高音域
+    const bassAvg = getBandAverage(0, 4);
+    const midAvg = getBandAverage(4, 12);
+    const highAvg = getBandAverage(12, bufferLength);
 
+    // データを8倍に補間
+    const interpolatedData: number[] = [];
     for (let i = 0; i < bufferLength; i++) {
-      // 周波数帯域に応じた重み付け
+      const current = dataArray[i];
+      const next = i < bufferLength - 1 ? dataArray[i + 1] : dataArray[i];
+
+      // 現在の値を追加
+      interpolatedData.push(current);
+
+      // 7つの補間値を追加
+      const step = (next - current) / 8;
+      for (let j = 1; j < 8; j++) {
+        interpolatedData.push(current + step * j);
+      }
+    }
+
+    const totalPoints = interpolatedData.length;
+
+    for (let i = 0; i < totalPoints; i++) {
       let weight = highWeight;
-      if (i < 4) {
+      if (i < 32) { // 補間後のインデックスを調整（8倍）
         weight = bassWeight;
-      } else if (i < 12) {
+      } else if (i < 96) { // 補間後のインデックスを調整（8倍）
         weight = midWeight;
       }
 
-      // 周波数帯域ごとの平均値を反映
       let bandAvg = highAvg;
-      if (i < 4) {
+      if (i < 32) {
         bandAvg = bassAvg;
-      } else if (i < 12) {
+      } else if (i < 96) {
         bandAvg = midAvg;
       }
 
-      // より反応性の高い波形の計算
-      const amplitude = dataArray[i] / 255.0;  // 0-1の範囲に正規化
+      const amplitude = interpolatedData[i] / 255.0;
       const barHeight = ((amplitude * weight * 50) + (bandAvg * 0.2)) * (isPlaying ? 1 : 0.3);
-      const angle = (i * 2 * Math.PI) / bufferLength;
+      const angle = (i * 2 * Math.PI) / totalPoints;
 
       const startX = center + (radius * Math.cos(angle));
       const startY = center + (radius * Math.sin(angle));
@@ -115,12 +160,11 @@
       ctx.moveTo(startX, startY);
       ctx.lineTo(endX, endY);
 
-      // 周波数に応じた色の設定
-      const hue = (i / bufferLength) * 360;
+      const hue = (i / totalPoints) * 360;
       ctx.strokeStyle = isPlaying
         ? `hsla(${hue}, 80%, 60%, ${amplitude * 0.8 + 0.2})`
         : `rgba(255, 255, 255, 0.3)`;
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5; // 線を少し細くして密度感を出す
       ctx.stroke();
     }
 
@@ -144,7 +188,7 @@
       new CustomEvent('audioplayerstatechange', {
         detail: {
           isPlaying: playing,
-          audioElement: audioElement,
+          audioElement: audioElements[currentTrackIndex],
           audioContext: audioContext,
           analyser: analyser
         }
@@ -165,10 +209,10 @@
     isPlaying = !isPlaying;
 
     if (isPlaying) {
-      audioElement.play();
+      audioElements[currentTrackIndex].play();
       drawVisualizer();
     } else {
-      audioElement.pause();
+      audioElements[currentTrackIndex].pause();
       if (animationId) {
         cancelAnimationFrame(animationId);
       }
@@ -178,3 +222,15 @@
     dispatchStateChange(isPlaying);
   });
 </script>
+
+<style>
+  #audioVisualizer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width:300px;
+    height: 125dvh;
+    z-index:999;
+    pointer-events: none;
+  }
+</style>
