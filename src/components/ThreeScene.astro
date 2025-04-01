@@ -36,7 +36,7 @@
   setTimeout(() => {
     renderer.domElement.style.opacity = '1';
     renderer.domElement.style.transform = 'translateX(0)';
-  }, 2500);  // フェードイン開始までの遅延時間（2.5秒）
+  }, 2800);  // フェードイン開始までの遅延時間（2.5秒）
 
   const settings = {
     wheelSensitivity: 0.01,
@@ -63,7 +63,7 @@
   let slideSize = calculateSlideSize();
   const gap = 0;  // ギャップを0に設定
   const slideCount = 10;
-  const imagesCount = 5;
+  const imagesCount = 12;
   const totalWidth = slideCount * slideSize.width;
   const slideUnit = slideSize.width;
 
@@ -308,9 +308,9 @@
 
   // 3. 初期スライドアニメーションの設定
   const initialAnimation = {
-    startDelay: 1200,
-    duration: 3000,
-    targetScroll: -slideUnit,
+    startDelay: 2800,
+    duration: 800,
+    targetScroll: -slideUnit * 3,
     started: false,
     startTime: 0
   };
