@@ -1,18 +1,77 @@
-<button id="musicPlayer" aria-label="音楽を再生/停止">
-  <span class="play-icon">▶</span>
-  <span class="pause-icon" style="display: none;">⏸</span>
-</button>
+<div class="player-container">
+  <canvas id="visualizer"></canvas>
+  <button id="musicPlayer" aria-label="音楽を再生/停止">
+    <span class="play-icon">▶</span>
+    <span class="pause-icon" style="display: none;">⏸</span>
+  </button>
+</div>
 
 <script>
-  // 音声の設定
-  const audio = new Audio('/sound.mp3');
-  audio.loop = true; // ループ再生を有効化
+  // Web Audio APIのセットアップ
+  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const audioElement = new Audio('/sound.mp3');
+  audioElement.loop = true;
+
+  const source = audioContext.createMediaElementSource(audioElement);
+  const analyser = audioContext.createAnalyser();
+  analyser.fftSize = 256;
+  const bufferLength = analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+
+  source.connect(analyser);
+  analyser.connect(audioContext.destination);
+
+  // キャンバスのセットアップ
+  const canvas = document.getElementById('visualizer') as HTMLCanvasElement;
+  const ctx = canvas.getContext('2d')!;
+
+  // キャンバスのサイズ設定
+  const setCanvasSize = () => {
+    const size = 150; // プレーヤーの周りの余白を含むサイズ
+    canvas.width = size;
+    canvas.height = size;
+    canvas.style.width = `${size}px`;
+    canvas.style.height = `${size}px`;
+  };
+
+  setCanvasSize();
+  window.addEventListener('resize', setCanvasSize);
 
   let isPlaying = false;
+  let animationId: number;
 
   const player = document.getElementById('musicPlayer') as HTMLButtonElement;
   const playIcon = player.querySelector('.play-icon') as HTMLElement;
   const pauseIcon = player.querySelector('.pause-icon') as HTMLElement;
+
+  // ビジュアライザーの描画
+  const drawVisualizer = () => {
+    analyser.getByteFrequencyData(dataArray);
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const center = canvas.width / 2;
+    const radius = 35; // プレーヤーボタンの半径に合わせる
+
+    for (let i = 0; i < bufferLength; i++) {
+      const barHeight = dataArray[i] * 0.5;
+      const angle = (i * 2 * Math.PI) / bufferLength;
+
+      const startX = center + (radius * Math.cos(angle));
+      const startY = center + (radius * Math.sin(angle));
+      const endX = center + ((radius + barHeight) * Math.cos(angle));
+      const endY = center + ((radius + barHeight) * Math.sin(angle));
+
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.lineTo(endX, endY);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${isPlaying ? 0.8 : 0.3})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    animationId = requestAnimationFrame(drawVisualizer);
+  };
 
   // UIの更新
   const updatePlayerUI = () => {
@@ -25,19 +84,47 @@
     }
   };
 
+  // カスタムイベントの発行
+  const dispatchStateChange = (playing: boolean) => {
+    window.dispatchEvent(
+      new CustomEvent('audioplayerstatechange', {
+        detail: { isPlaying: playing }
+      })
+    );
+  };
+
   // 再生/停止の切り替え
   player.addEventListener('click', () => {
-    if (isPlaying) {
-      audio.pause();
-    } else {
-      audio.play();
-    }
     isPlaying = !isPlaying;
     updatePlayerUI();
+    dispatchStateChange(isPlaying);
   });
+
+  // 初期描画
+  drawVisualizer();
 </script>
 
 <style>
+  .player-container {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 150px;
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  #visualizer {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
   #musicPlayer {
     position: fixed;
     bottom: 20px;

@@ -55,6 +55,7 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
   justify-content: center;
   align-items: center;
   gap: 0px;
+  z-index: 99;
   p {
     color: $white;
     font-size: 10px;

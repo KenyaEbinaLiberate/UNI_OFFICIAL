@@ -968,6 +968,7 @@ a {
   justify-content: center;
   align-items: center;
   gap: 0px;
+  z-index: 99;
 }
 .brand__list p {
   color: rgb(255, 255, 255);
