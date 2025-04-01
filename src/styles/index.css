@@ -19,8 +19,8 @@ dd {
   margin: 0;
 }
 
-ul[role=list],
-ol[role=list] {
+ul[role="list"],
+ol[role="list"] {
   list-style: none;
 }
 
@@ -45,7 +45,7 @@ body {
 
 a:not([class]) {
   -webkit-text-decoration-skip: ink;
-          text-decoration-skip-ink: auto;
+  text-decoration-skip-ink: auto;
 }
 
 img,
@@ -1023,6 +1023,15 @@ a {
   padding: 0 16px;
   justify-content: space-around;
   border: 1px solid rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease-in-out;
+  z-index: 1001;
+}
+.floating__navi.is__open {
+  height: auto;
+  flex-flow: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 12px;
 }
 .floating__navi .navi__arrow {
   width: 10px;
@@ -1044,7 +1053,9 @@ a {
   width: 8px;
   height: 2px;
   background: rgb(0, 0, 255);
-  position: relative;
+  position: absolute;
+  bottom: 14px;
+  right: 16px;
 }
 .floating__navi .plus__icon::before {
   content: "";
@@ -1055,4 +1066,79 @@ a {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-}/*# sourceMappingURL=index.css.map */
+}
+.floating__navi .menu__wrap {
+  display: none;
+}
+.floating__navi.is__open {
+  padding: 48px 16px;
+}
+.floating__navi.is__open .menu__wrap {
+  display: flex;
+  flex-flow: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: 6px;
+  width: 100%;
+}
+.floating__navi.is__open .menu__wrap .button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgb(0, 0, 255);
+  padding: 16px;
+  border-radius: 8px;
+}
+.floating__navi.is__open .menu__wrap .button p {
+  color: rgb(255, 255, 255);
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 600;
+}
+.floating__navi.is__open .menu__wrap .button figure {
+  filter: brightness(0) grayscale(1) invert(1);
+  rotate: 90deg;
+  width: 10px;
+}
+.floating__navi.is__open .menu__wrap .text__link {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  position: relative;
+}
+.floating__navi.is__open .menu__wrap .text__link::before {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 1px;
+  background: rgb(0, 0, 255);
+  bottom: 0;
+  left: 0;
+  z-index: -1;
+}
+.floating__navi.is__open .menu__wrap .text__link p {
+  color: rgb(0, 0, 255);
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 600;
+}
+.floating__navi.is__open .menu__wrap .text__link figure {
+  rotate: 90deg;
+  width: 10px;
+}
+
+.menu__overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  z-index: 1000;
+}

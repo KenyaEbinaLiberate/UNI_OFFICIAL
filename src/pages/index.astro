@@ -3,6 +3,7 @@ import ThreeScene from '../components/ThreeScene.astro';
 import MusicPlayer from '../components/MusicPlayer.astro';
 import AudioVisualizer from '../components/AudioVisualizer.astro';
 import TextAnimation from '../components/TextAnimation.astro';
+import MenuAnimation from '../components/MenuAnimation.astro';
 ---
 
 <!DOCTYPE html>
@@ -50,6 +51,7 @@ import TextAnimation from '../components/TextAnimation.astro';
 		<AudioVisualizer />
 		<ThreeScene />
 		<MusicPlayer />
+
 		<div class="head__area">
 			<figure class="logo__type">
 				<img src="/images/type.svg" alt="UNI OFFICIAL SITE" width="385" height="179">
@@ -75,10 +77,10 @@ import TextAnimation from '../components/TextAnimation.astro';
 		</div>
 		<div class="floating__navi">
 			<figure class="navi__arrow"><img src="/images/arrow.svg" alt="arrow" width="18" height="18"></figure>
-
-				<TextAnimation />
-
+			<TextAnimation />
+			<MenuAnimation />
 			<div class="plus__icon"><div></div></div>
 		</div>
+		<div class="menu__overlay"></div>
 	</body>
 </html>
