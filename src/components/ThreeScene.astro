@@ -48,6 +48,8 @@
     maxDistortion: 2.5,
     distortionSensitivity: 0.12,
     distortionSmoothing: 0.075,
+    autoScrollSpeed: 0.001, // 自動スクロールの速度（調整可能）
+    userInteractionTimeout: 500, // ユーザー操作後、自動スクロールを再開するまでの時間（ミリ秒）
   };
 
   // スライドのサイズを画面サイズに基づいて計算
@@ -81,6 +83,9 @@
   let targetDistortionFactor = 0;
   let peakVelocity = 0;
   let velocityHistory = [0, 0, 0, 0, 0];
+
+  let isUserInteracting = false;
+  let lastInteractionTime = 0;
 
   const correctImageColor = (texture) => {
     texture.colorSpace = THREE.SRGBColorSpace;
@@ -207,9 +212,13 @@
       autoScrollSpeed =
         Math.min(Math.abs(e.deltaY) * 0.0005, 0.05) * Math.sign(e.deltaY);
 
+      startUserInteraction();
+
+      // スクロール終了を検知して自動スクロールを再開
       clearTimeout(window.scrollTimeout);
       window.scrollTimeout = setTimeout(() => {
         isScrolling = false;
+        endUserInteraction();
       }, 150);
     },
     { passive: false }
@@ -221,6 +230,8 @@
       touchStartX = e.touches[0].clientY;
       touchLastX = touchStartX;
       isScrolling = false;
+
+      startUserInteraction();
     },
     { passive: false }
   );
@@ -258,6 +269,8 @@
         isScrolling = false;
       }, 5000);
     }
+
+    endUserInteraction();
   });
 
   // リサイズ時の処理を改善
@@ -312,8 +325,12 @@
     duration: 800,
     targetScroll: -slideUnit * 3,
     started: false,
-    startTime: 0
+    startTime: 0,
+    autoScrollDelay: 500
   };
+
+  // 初期アニメーション後に自動スクロールを開始するための変数
+  let autoScrollStarted = false;
 
   // 4. 初期アニメーション開始のトリガー
   setTimeout(() => {
@@ -332,6 +349,9 @@
         const progress = elapsed / initialAnimation.duration;
         const eased = easeOutExpo(progress);
         targetPosition = initialAnimation.targetScroll * eased;
+      } else if (!autoScrollStarted && elapsed > initialAnimation.duration + initialAnimation.autoScrollDelay) {
+        // 初期アニメーション完了から500ms後に自動スクロール開始
+        autoScrollStarted = true;
       }
     }
 
@@ -388,10 +408,25 @@
       }
     });
 
+    // 自動スクロールの処理を修正
+    if (autoScrollStarted && !isUserInteracting && time - lastInteractionTime > settings.userInteractionTimeout) {
+      targetPosition -= settings.autoScrollSpeed;
+    }
+
     renderer.render(scene, camera);
   };
 
   animate(performance.now());
+
+  // イベントリスナーを更新
+  const startUserInteraction = () => {
+    isUserInteracting = true;
+    lastInteractionTime = performance.now();
+  };
+
+  const endUserInteraction = () => {
+    isUserInteracting = false;
+  };
 </script>
 
 <style>
