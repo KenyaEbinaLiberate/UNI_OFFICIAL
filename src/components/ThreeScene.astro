@@ -55,17 +55,17 @@
     const viewportHeight = 2 * Math.tan((camera.fov * Math.PI / 180) / 2) * camera.position.z;
     const viewportWidth = viewportHeight * (window.innerWidth / window.innerHeight);
     return {
-      width: viewportWidth * 0.8, // 画面幅の80%を使用
-      height: viewportHeight * 0.8 // 画面高さの80%を使用
+      width: viewportWidth,     // 100%に変更
+      height: viewportHeight    // 100%に変更
     };
   };
 
   let slideSize = calculateSlideSize();
-  const gap = slideSize.width * 0.05; // ギャップをスライドサイズに比例させる
+  const gap = 0;  // ギャップを0に設定
   const slideCount = 10;
   const imagesCount = 5;
-  const totalWidth = slideCount * (slideSize.width + gap);
-  const slideUnit = slideSize.width + gap;
+  const totalWidth = slideCount * slideSize.width;
+  const slideUnit = slideSize.width;
 
   const slides = [];
   let currentPosition = 0;
@@ -96,7 +96,7 @@
     });
 
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.x = index * (slideSize.width + gap);
+    mesh.position.x = index * slideSize.width; // ギャップを除外
     mesh.userData = {
       originalVertices: [...geometry.attributes.position.array],
       index,
@@ -112,7 +112,7 @@
         material.map = texture;
         material.needsUpdate = true;
 
-        // オブジェクトフィットの実装
+        // オブジェクトフィットの実装を調整
         const imgAspect = texture.image.width / texture.image.height;
         const slideAspect = slideSize.width / slideSize.height;
 
@@ -120,13 +120,13 @@
         texture.offset.set(0, 0);
 
         if (imgAspect > slideAspect) {
-          // 画像が横長の場合、高さに合わせる
+          // 画像が横長の場合、幅に合わせる
           texture.repeat.set(1, 1);
-          texture.offset.x = (1 - slideAspect/imgAspect) / 2;
+          texture.offset.y = (1 - slideAspect/imgAspect) / 2;
         } else {
-          // 画像が縦長の場合、幅に合わせる
+          // 画像が縦長の場合、高さに合わせる
           texture.repeat.set(1, 1);
-          texture.offset.y = (1 - imgAspect/slideAspect) / 2;
+          texture.offset.x = (1 - imgAspect/slideAspect) / 2;
         }
       },
       undefined,
@@ -277,8 +277,8 @@
       slide.userData.originalVertices = [...newGeometry.attributes.position.array];
 
       // 位置を更新
-      const newTotalWidth = slideCount * (slideSize.width + gap);
-      slide.position.x = (index * (slideSize.width + gap)) - (newTotalWidth / 2) + currentPosition;
+      const newTotalWidth = slideCount * slideSize.width;
+      slide.position.x = (index * slideSize.width) - (newTotalWidth / 2) + currentPosition;
       slide.userData.targetX = slide.position.x - currentPosition;
       slide.userData.currentX = slide.position.x;
 
