@@ -20,12 +20,12 @@
 
   // カメラの視野角を広げて、より画面いっぱいに表示
   const camera = new THREE.PerspectiveCamera(
-    75, // より広い視野角
+    45, // より自然な視野角
     window.innerWidth / window.innerHeight,
     0.1,
     100
   );
-  camera.position.z = 1.96; // カメラを近づける
+  camera.position.z = 5; // カメラを後ろに下げる
 
   // 初期状態で非表示にする
   renderer.domElement.style.opacity = '0';
@@ -40,26 +40,28 @@
 
   const settings = {
     wheelSensitivity: 0.01,
-    touchSensitivity: 0.01,
-    momentumMultiplier: 2,
-    smoothing: 0.1,
+    touchSensitivity: 0.015,
+    momentumMultiplier: 1.5,
+    smoothing: 0.15,
     slideLerp: 0.075,
     distortionDecay: 0.95,
     maxDistortion: 2.5,
-    distortionSensitivity: 0.15,
+    distortionSensitivity: 0.12,
     distortionSmoothing: 0.075,
   };
 
   // スライドのサイズを画面サイズに基づいて計算
   const calculateSlideSize = () => {
-    const aspectRatio = window.innerWidth / window.innerHeight;
-    const slideHeight = 3.0; // 基準となる高さ
-    const slideWidth = slideHeight * aspectRatio;
-    return { width: slideWidth, height: slideHeight };
+    const viewportHeight = 2 * Math.tan((camera.fov * Math.PI / 180) / 2) * camera.position.z;
+    const viewportWidth = viewportHeight * (window.innerWidth / window.innerHeight);
+    return {
+      width: viewportWidth * 0.8, // 画面幅の80%を使用
+      height: viewportHeight * 0.8 // 画面高さの80%を使用
+    };
   };
 
   let slideSize = calculateSlideSize();
-  const gap = 0.1;
+  const gap = slideSize.width * 0.05; // ギャップをスライドサイズに比例させる
   const slideCount = 10;
   const imagesCount = 5;
   const totalWidth = slideCount * (slideSize.width + gap);
@@ -88,9 +90,8 @@
   const createSlide = (index) => {
     const geometry = new THREE.PlaneGeometry(slideSize.width, slideSize.height, 32, 16);
 
-    const colors = ["#FF5733", "#33FF57", "#3357FF", "#F3FF33", "#FF33F3"];
     const material = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(colors[index % colors.length]),
+      color: 0xffffff,
       side: THREE.DoubleSide,
     });
 
@@ -109,23 +110,23 @@
       (texture) => {
         correctImageColor(texture);
         material.map = texture;
-        material.color.set(0xffffff);
         material.needsUpdate = true;
 
-        // テクスチャのサイズ調整をcover相当に
+        // オブジェクトフィットの実装
         const imgAspect = texture.image.width / texture.image.height;
         const slideAspect = slideSize.width / slideSize.height;
 
+        texture.repeat.set(1, 1);
+        texture.offset.set(0, 0);
+
         if (imgAspect > slideAspect) {
           // 画像が横長の場合、高さに合わせる
-          const scale = slideAspect / imgAspect;
-          texture.repeat.set(scale, 1);
-          texture.offset.x = (1 - scale) / 2;
+          texture.repeat.set(1, 1);
+          texture.offset.x = (1 - slideAspect/imgAspect) / 2;
         } else {
           // 画像が縦長の場合、幅に合わせる
-          const scale = imgAspect / slideAspect;
-          texture.repeat.set(1, scale);
-          texture.offset.y = (1 - scale) / 2;
+          texture.repeat.set(1, 1);
+          texture.offset.y = (1 - imgAspect/slideAspect) / 2;
         }
       },
       undefined,
@@ -217,7 +218,7 @@
   window.addEventListener(
     "touchstart",
     (e) => {
-      touchStartX = e.touches[0].clientX;
+      touchStartX = e.touches[0].clientY;
       touchLastX = touchStartX;
       isScrolling = false;
     },
@@ -228,17 +229,17 @@
     "touchmove",
     (e) => {
       e.preventDefault();
-      const touchX = e.touches[0].clientX;
-      const deltaX = touchX - touchLastX;
-      touchLastX = touchX;
+      const touchY = e.touches[0].clientY;
+      const deltaY = touchY - touchLastX;
+      touchLastX = touchY;
 
-      const touchStrength = Math.abs(deltaX) * 0.02;
+      const touchStrength = Math.abs(deltaY) * 0.02;
       targetDistortionFactor = Math.min(
         1.0,
         targetDistortionFactor + touchStrength
       );
 
-      targetPosition -= deltaX * settings.touchSensitivity;
+      targetPosition += deltaY * settings.touchSensitivity;
       isScrolling = true;
     },
     { passive: false }
@@ -246,16 +247,16 @@
 
   window.addEventListener("touchend", () => {
     const velocity = (touchLastX - touchStartX) * 0.005;
-    if (Math.abs(velocity) > 0.5) {
-      autoScrollSpeed = -velocity * settings.momentumMultiplier * 0.05;
+    if (Math.abs(velocity) > 0.3) {
+      autoScrollSpeed = velocity * settings.momentumMultiplier * 0.05;
       targetDistortionFactor = Math.min(
         1.0,
-        Math.abs(velocity) * 3 * settings.distortionSensitivity
+        Math.abs(velocity) * 2.5 * settings.distortionSensitivity
       );
       isScrolling = true;
       setTimeout(() => {
         isScrolling = false;
-      }, 800);
+      }, 1000);
     }
   });
 
