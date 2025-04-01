@@ -1,0 +1,68 @@
+<button id="musicPlayer" aria-label="音楽を再生/停止">
+  <span class="play-icon">▶</span>
+  <span class="pause-icon" style="display: none;">⏸</span>
+</button>
+
+<script>
+  // 音声の設定
+  const audio = new Audio('/sound.mp3');
+  audio.loop = true; // ループ再生を有効化
+
+  let isPlaying = false;
+
+  const player = document.getElementById('musicPlayer') as HTMLButtonElement;
+  const playIcon = player.querySelector('.play-icon') as HTMLElement;
+  const pauseIcon = player.querySelector('.pause-icon') as HTMLElement;
+
+  // UIの更新
+  const updatePlayerUI = () => {
+    if (isPlaying) {
+      playIcon.style.display = 'none';
+      pauseIcon.style.display = 'block';
+    } else {
+      playIcon.style.display = 'block';
+      pauseIcon.style.display = 'none';
+    }
+  };
+
+  // 再生/停止の切り替え
+  player.addEventListener('click', () => {
+    if (isPlaying) {
+      audio.pause();
+    } else {
+      audio.play();
+    }
+    isPlaying = !isPlaying;
+    updatePlayerUI();
+  });
+</script>
+
+<style>
+  #musicPlayer {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease, background-color 0.2s ease;
+    z-index: 1000;
+  }
+
+  #musicPlayer:hover {
+    transform: scale(1.05);
+    background: rgba(255, 255, 255, 1);
+  }
+
+  #musicPlayer:active {
+    transform: scale(0.95);
+  }
+</style>
