@@ -19,8 +19,8 @@ dd {
   margin: 0;
 }
 
-ul[role="list"],
-ol[role="list"] {
+ul[role=list],
+ol[role=list] {
   list-style: none;
 }
 
@@ -45,7 +45,7 @@ body {
 
 a:not([class]) {
   -webkit-text-decoration-skip: ink;
-  text-decoration-skip-ink: auto;
+          text-decoration-skip-ink: auto;
 }
 
 img,
@@ -927,7 +927,7 @@ a {
   gap: 12px;
   z-index: 10;
 }
-@media only screen and (max-width: 767px) {
+@media screen and (max-width: 768px) {
   .head__area {
     width: calc(100% - 40px);
     left: 20px;
@@ -1024,7 +1024,7 @@ a {
   justify-content: space-around;
   border: 1px solid rgba(0, 0, 0, 0.2);
   transition: all 0.3s ease-in-out;
-  z-index: 1001;
+  z-index: 1000;
 }
 .floating__navi.is__open {
   height: auto;
@@ -1128,17 +1128,4 @@ a {
 .floating__navi.is__open .menu__wrap .text__link figure {
   rotate: 90deg;
   width: 10px;
-}
-
-.menu__overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.5);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
-  z-index: 1000;
-}
+}/*# sourceMappingURL=index.css.map */
