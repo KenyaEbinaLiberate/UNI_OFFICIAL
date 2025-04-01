@@ -27,16 +27,16 @@
   );
   camera.position.z = 5; // カメラを後ろに下げる
 
-  // 初期状態で非表示にする
+  // 1. キャンバスの初期表示設定
   renderer.domElement.style.opacity = '0';
   renderer.domElement.style.transform = 'translateX(100px)';
   renderer.domElement.style.transition = 'opacity 0.8s ease-out, transform 0.8s ease-out';
 
-  // フェードインアニメーション
+  // 2. フェードインアニメーション設定
   setTimeout(() => {
     renderer.domElement.style.opacity = '1';
     renderer.domElement.style.transform = 'translateX(0)';
-  }, 500);
+  }, 2500);  // フェードイン開始までの遅延時間（2.5秒）
 
   const settings = {
     wheelSensitivity: 0.01,
@@ -256,7 +256,7 @@
       isScrolling = true;
       setTimeout(() => {
         isScrolling = false;
-      }, 1000);
+      }, 5000);
     }
   });
 
@@ -306,20 +306,20 @@
     return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
   };
 
-  // 初期アニメーションの設定
+  // 3. 初期スライドアニメーションの設定
   const initialAnimation = {
     startDelay: 1200,
     duration: 3000,
-    targetScroll: -25,
+    targetScroll: -slideUnit,
     started: false,
     startTime: 0
   };
 
-  // アニメーション開始を遅延実行（フェードイン後に開始）
+  // 4. 初期アニメーション開始のトリガー
   setTimeout(() => {
     initialAnimation.started = true;
     initialAnimation.startTime = performance.now();
-    targetDistortionFactor = 0.5;
+    targetDistortionFactor = 0.5;  // 初期歪み効果の強さ
   }, initialAnimation.startDelay);
 
   const animate = (time) => {
@@ -425,11 +425,9 @@
     left: 0;
     width: 100vw;
     height: 100dvh;
-    z-index: -1;
+    z-index: 1;
     opacity: 0;
     transform: translateX(100px);
     will-change: opacity, transform;
   }
-
-
 </style>
