@@ -4,16 +4,24 @@
   // Web Audio APIのセットアップ
   const audioContext = new (window.AudioContext || window.webkitAudioContext)();
   const audioElement = new Audio('/sound.mp3');
-  audioElement.loop = true;
+  const audioElement2 = new Audio('/sound2.mp3');
+  audioElement2.loop = true;
 
   const source = audioContext.createMediaElementSource(audioElement);
+  const source2 = audioContext.createMediaElementSource(audioElement2);
   const analyser = audioContext.createAnalyser();
   analyser.fftSize = 512; // より多くの棘を表示（128 * 4）
   const bufferLength = analyser.frequencyBinCount;
   const dataArray = new Uint8Array(bufferLength);
 
   source.connect(analyser);
+  source2.connect(analyser);
   analyser.connect(audioContext.destination);
+
+  // 最初の音声が終わったら2番目の音声を再生
+  audioElement.addEventListener('ended', () => {
+    audioElement2.play();
+  });
 
   // キャンバスのセットアップ
   const canvas = document.getElementById('audioVisualizer') as HTMLCanvasElement;
@@ -92,6 +100,7 @@
       drawVisualizer();
     } else {
       audioElement.pause();
+      audioElement2.pause();
       cancelAnimationFrame(animationId);
       // キャンバスをクリア
       ctx.clearRect(0, 0, canvas.width, canvas.height);
