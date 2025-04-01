@@ -981,50 +981,78 @@ a {
   width: fit-content;
 }
 
-.player-container {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  width: 150px;
-  height: 150px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-#visualizer {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-
 #musicPlayer {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  width: 50px;
-  height: 50px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.9);
-  border: none;
+  background: rgb(255, 255, 255);
+  padding: 4px;
+  color: rgb(0, 0, 255);
+  border: 1px solid rgba(0, 0, 0, 0.2);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  font-size: 10px;
   transition: transform 0.2s ease, background-color 0.2s ease;
   z-index: 1000;
 }
 
 #musicPlayer:hover {
   transform: scale(1.05);
-  background: rgb(255, 255, 255);
 }
 
 #musicPlayer:active {
   transform: scale(0.95);
+}
+
+.floating__navi {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  width: calc(100% - 80px);
+  height: 32px;
+  border-radius: 8px;
+  background: rgb(255, 255, 255);
+  display: flex;
+  flex-flow: row;
+  align-items: center;
+  padding: 0 16px;
+  justify-content: space-around;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+.floating__navi .navi__arrow {
+  width: 10px;
+  margin-right: 12px;
+}
+.floating__navi .navi__arrow img {
+  width: 100%;
+}
+.floating__navi .message__area {
+  width: calc(100% - 40px);
+}
+.floating__navi .message__area p {
+  font-size: 10px;
+  color: rgb(0, 0, 255);
+  line-height: 1;
+  font-weight: 500;
+}
+.floating__navi .plus__icon {
+  width: 8px;
+  height: 2px;
+  background: rgb(0, 0, 255);
+  position: relative;
+}
+.floating__navi .plus__icon::before {
+  content: "";
+  position: absolute;
+  width: 2px;
+  height: 8px;
+  background: rgb(0, 0, 255);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }/*# sourceMappingURL=index.css.map */

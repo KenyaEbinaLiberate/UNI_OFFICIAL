@@ -1,0 +1,84 @@
+<div class="message__area">
+  <p class="animated-text"></p>
+</div>
+
+<script>
+  const messages: string[] = [
+    "DO YOU WANT TO COME?",
+    "ARE YOU READY TO JOIN?",
+    "SHALL WE BEGIN NOW?",
+    "WANT TO EXPERIENCE MORE?",
+    "DARE TO TAKE THE LEAP?"
+  ];
+
+  const animatedText = document.querySelector('.animated-text') as HTMLParagraphElement;
+  let currentMessageIndex = 0;
+
+  function animateText(text: string): void {
+    if (!animatedText) return;
+    animatedText.innerHTML = ''; // クリア
+    const chars = [...text];  // スペースを保持するために配列に変換
+
+    chars.forEach((char: string, index: number) => {
+      const span = document.createElement('span');
+      span.textContent = char;
+      span.style.opacity = '0';
+      span.style.transform = 'translateY(20px)';
+      span.style.display = 'inline-block';
+      span.style.transition = 'all 0.3s ease-in-out';
+      if (char === ' ') {
+        span.style.width = '0.5em'; // スペースの幅を0.005emから0.5emに変更
+      }
+      animatedText.appendChild(span);
+
+      // 遅延を付けて1文字ずつアニメーション
+      setTimeout(() => {
+        span.style.opacity = '1';
+        span.style.transform = 'translateY(0)';
+      }, 40 * index);  // 100から50に変更してより素早く表示
+    });
+  }
+
+  function changeMessage(): void {
+    if (!animatedText) return;
+    const spans = animatedText.querySelectorAll('span');
+
+    // 文章全体をフェードアウト
+    spans.forEach(span => {
+      span.style.transition = 'all 0.3s ease';
+      span.style.opacity = '0';
+      span.style.transform = 'translateY(-10px)';
+    });
+
+    // フェードアウト完了後に次のメッセージを表示
+    setTimeout(() => {
+      currentMessageIndex = (currentMessageIndex + 1) % messages.length;
+      animateText(messages[currentMessageIndex]);
+    }, 600); // フェードアウトの時間に合わせて調整
+  }
+
+  // 初期表示
+  animateText(messages[0]);
+
+  // 5秒ごとにメッセージを変更
+  setInterval(changeMessage, 5000);
+</script>
+
+<style>
+  .message__area {
+    overflow: hidden;
+  }
+
+  .animated-text {
+    margin: 0;
+    padding: 0;
+    font-size: 10px;
+    color: var(--color-white);
+    text-align: left;
+    white-space: pre;
+  }
+
+  .animated-text span {
+    display: inline-block;
+  }
+</style>
