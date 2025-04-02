@@ -6,7 +6,9 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,scss,md,astro}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,scss,md,astro}\""
   },
   "dependencies": {
     "@types/three": "0.175.0",
@@ -16,6 +18,8 @@
     "three": "0.175.0"
   },
   "devDependencies": {
+    "prettier": "^3.2.5",
+    "prettier-plugin-astro": "0.14.1",
     "terser": "5.39.0"
   }
 }

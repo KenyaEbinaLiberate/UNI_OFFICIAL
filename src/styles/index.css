@@ -1021,6 +1021,17 @@ a {
   z-index: 1;
 }
 
+@keyframes fontWeight {
+  0% {
+    font-weight: 100;
+  }
+  50% {
+    font-weight: 800;
+  }
+  100% {
+    font-weight: 100;
+  }
+}
 .splash__section {
   background: rgb(0, 0, 255);
   position: fixed;
@@ -1497,7 +1508,7 @@ a {
 }
 @media screen and (max-width: 768px) {
   .floating__navi .message__area p {
-    transform: translateY(1px);
+    transform: translateY(2px);
   }
 }
 .floating__navi .plus__icon {
@@ -1640,7 +1651,8 @@ a {
   font-weight: 500;
   scale: 1;
 }
-.floating__navi.is__open .menu__wrap .detail__wrap #time {
+
+#time {
   scale: 0.8;
   transform-origin: left;
   font-size: 10px;
@@ -1772,5 +1784,11 @@ a {
   letter-spacing: -0.02em;
   font-family: "Doto", sans-serif;
   font-optical-sizing: auto;
-  font-weight: 400;
+  animation: fontWeight 4s ease-in-out forwards infinite;
+}
+@media screen and (max-width: 768px) {
+  .current-time {
+    font-size: 14vw;
+    transform: translateY(5vh);
+  }
 }/*# sourceMappingURL=index.css.map */

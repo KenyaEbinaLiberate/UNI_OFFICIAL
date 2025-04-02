@@ -19,7 +19,7 @@
     color: #ff6b6b;
 
     &::after {
-      content: "✨";
+      content: '✨';
       position: absolute;
       right: -20px;
       animation: sparkle 0.5s infinite alternate;

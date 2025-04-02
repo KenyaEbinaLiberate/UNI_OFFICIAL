@@ -20,7 +20,7 @@
   color: #ff6b6b;
 }
 .fun-link:hover::after {
-  content: "✨";
+  content: '✨';
   position: absolute;
   right: -20px;
   animation: sparkle 0.5s infinite alternate;
@@ -44,4 +44,4 @@
 .animate-on-scroll.visible {
   opacity: 1;
   transform: translateY(0);
-}/*# sourceMappingURL=fun-effects.css.map */
+} /*# sourceMappingURL=fun-effects.css.map */

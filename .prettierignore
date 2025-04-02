@@ -1,0 +1,20 @@
+# Build outputs
+dist/
+.astro/
+
+# Dependencies
+node_modules/
+
+# Cache
+.cache/
+.temp/
+
+# Package files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Other generated files
+coverage/
+*.min.js
+*.min.css

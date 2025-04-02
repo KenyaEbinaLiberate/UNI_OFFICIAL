@@ -12,7 +12,7 @@ export class ResizeReloader {
   }
 
   private init(): void {
-    window.addEventListener("resize", this.handleResize.bind(this));
+    window.addEventListener('resize', this.handleResize.bind(this));
   }
 
   private handleResize(): void {
@@ -33,6 +33,6 @@ export class ResizeReloader {
   }
 
   public destroy(): void {
-    window.removeEventListener("resize", this.handleResize.bind(this));
+    window.removeEventListener('resize', this.handleResize.bind(this));
   }
 }

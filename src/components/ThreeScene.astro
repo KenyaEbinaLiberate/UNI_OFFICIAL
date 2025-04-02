@@ -1,4 +1,6 @@
 ---
+import { settings, calculateSlideSize } from '../utils/three/config';
+import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
 ---
 
 <canvas id="canvas"></canvas>
@@ -18,7 +20,10 @@
     opacity: 0;
     visibility: hidden;
     transform: translateX(100px);
-    transition: opacity 1.5s ease-out, transform 1.5s ease-out, visibility 0s linear 0s;
+    transition:
+      opacity 1.5s ease-out,
+      transform 1.5s ease-out,
+      visibility 0s linear 0s;
   }
 
   canvas.visible {
@@ -40,17 +45,6 @@
     opacity: 1;
     visibility: visible;
   }
-
-  @media (max-width: 768px) {
-    .message-text {
-      font-size: 1.5rem;
-    }
-
-    .current-time {
-      font-size: 1rem;
-    }
-  }
-
 </style>
 
 <script>
@@ -59,23 +53,13 @@
   import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
   import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
   import { GlitchPass } from 'three/examples/jsm/postprocessing/GlitchPass.js';
+  import { settings, calculateSlideSize } from '../utils/three/config';
+  import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
 
-  interface SlideInterface extends THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> {
-    userData: {
-      originalVertices: number[];
-      targetX: number;
-      currentX: number;
-      index: number;
-    };
-  }
-
-  interface ExtendedWindow extends Window {
-    scrollTimeout?: ReturnType<typeof setTimeout>;
-  }
   declare const window: ExtendedWindow;
 
-  const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-  if (!canvas) throw new Error("Canvas element not found");
+  const canvas = document.getElementById('canvas') as HTMLCanvasElement;
+  if (!canvas) throw new Error('Canvas element not found');
 
   const idleMessageElement = document.querySelector('.idle-message') as HTMLElement;
   const currentTimeElement = document.querySelector('.current-time') as HTMLElement;
@@ -95,12 +79,7 @@
   scene.background = new THREE.Color(0xe3e3db);
 
   // カメラの初期化を先に行う
-  const camera = new THREE.PerspectiveCamera(
-    45,
-    window.innerWidth / window.innerHeight,
-    0.1,
-    100
-  );
+  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
   camera.position.z = 5;
 
   // レスポンシブ対応の関数
@@ -119,7 +98,7 @@
   window.addEventListener('resize', () => {
     updateRendererSize();
     // スライドのサイズも更新
-    slideSize = calculateSlideSize();
+    slideSize = calculateSlideSize(camera);
     updateSlidesSize();
   });
 
@@ -129,46 +108,10 @@
       canvas.classList.add('visible');
       imgNameElement?.classList.add('visible');
     }
-  }, 2800);  // フェードイン開始までの遅延時間（2.8秒）
+  }, 2800); // フェードイン開始までの遅延時間（2.8秒）
 
-  const settings = {
-    wheelSensitivity: 0.01,
-    touchSensitivity: 0.015,
-    momentumMultiplier: 1.5,
-    smoothing: 0.15,
-    slideLerp: 0.075,
-    distortionDecay: 0.98,
-    maxDistortion: 4.0,
-    distortionSensitivity: 0.2,
-    distortionSmoothing: 0.05,
-    autoScrollSpeed: 0.001, // 自動スクロールの速度（調整可能）
-    userInteractionTimeout: 500, // ユーザー操作後、自動スクロールを再開するまでの時間（ミリ秒）
-  };
-
-  // スライドのサイズを画面サイズに基づいて計算
-  const calculateSlideSize = () => {
-    const isPc = window.innerWidth >= 768;
-    const viewportHeight = 2 * Math.tan((camera.fov * Math.PI / 180) / 2) * camera.position.z;
-    let viewportWidth;
-    const gap = isPc ? 0 : 0; // PCの時だけ0.2のギャップを設定
-
-    if (isPc) {
-      // PCサイズの場合、高さを基準に9:16の比率で幅を計算
-      viewportWidth = (viewportHeight * 9) / 16;
-    } else {
-      // モバイルの場合、画面アスペクト比に合わせる
-      viewportWidth = viewportHeight * (window.innerWidth / window.innerHeight);
-    }
-
-    return {
-      width: viewportWidth,
-      height: viewportHeight,
-      gap: gap // ギャップも返すように追加
-    };
-  };
-
-  let slideSize = calculateSlideSize();
-  const gap = 0;  // ギャップを0に設定
+  let slideSize = calculateSlideSize(camera);
+  const gap = 0; // ギャップを0に設定
   const slideCount = 20;
   const imagesCount = 20;
   const totalWidth = slideCount * slideSize.width;
@@ -218,7 +161,7 @@
 
     new THREE.TextureLoader().load(
       imagePath,
-      (texture) => {
+      texture => {
         correctImageColor(texture);
         material.map = texture;
         material.needsUpdate = true;
@@ -233,15 +176,15 @@
         if (imgAspect > slideAspect) {
           // 画像が横長の場合、幅に合わせる
           texture.repeat.set(1, 1);
-          texture.offset.y = (1 - slideAspect/imgAspect) / 2;
+          texture.offset.y = (1 - slideAspect / imgAspect) / 2;
         } else {
           // 画像が縦長の場合、高さに合わせる
           texture.repeat.set(1, 1);
-          texture.offset.x = (1 - imgAspect/slideAspect) / 2;
+          texture.offset.x = (1 - imgAspect / slideAspect) / 2;
         }
       },
       undefined,
-      (err) => console.warn(`Couldn't load image ${imagePath}`, err)
+      err => console.warn(`Couldn't load image ${imagePath}`, err)
     );
 
     scene.add(mesh);
@@ -253,13 +196,17 @@
     createSlide(i);
   }
 
-  slides.forEach((slide) => {
+  slides.forEach(slide => {
     slide.position.x -= totalWidth / 2;
     slide.userData.targetX = slide.position.x;
     slide.userData.currentX = slide.position.x;
   });
 
-  const updateCurve = (mesh: SlideInterface, worldPositionX: number, distortionFactor: number): void => {
+  const updateCurve = (
+    mesh: SlideInterface,
+    worldPositionX: number,
+    distortionFactor: number
+  ): void => {
     const distortionCenter = new THREE.Vector2(0, 0);
     const distortionRadius = 2.0;
     const maxCurvature = settings.maxDistortion * distortionFactor;
@@ -273,17 +220,11 @@
 
       const vertexWorldPosX = worldPositionX + x;
       const distFromCenter = Math.sqrt(
-        Math.pow(vertexWorldPosX - distortionCenter.x, 2) +
-          Math.pow(y - distortionCenter.y, 2)
+        Math.pow(vertexWorldPosX - distortionCenter.x, 2) + Math.pow(y - distortionCenter.y, 2)
       );
 
-      const distortionStrength = Math.max(
-        0,
-        1 - distFromCenter / distortionRadius
-      );
-      const curveZ =
-        Math.pow(Math.sin((distortionStrength * Math.PI) / 2), 1.5) *
-        maxCurvature;
+      const distortionStrength = Math.max(0, 1 - distFromCenter / distortionRadius);
+      const curveZ = Math.pow(Math.sin((distortionStrength * Math.PI) / 2), 1.5) * maxCurvature;
 
       positionAttribute.setZ(i, curveZ);
     }
@@ -293,30 +234,26 @@
   };
 
   // イベントリスナー
-  window.addEventListener("keydown", (e) => {
-    if (e.key === "ArrowLeft") {
+  window.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') {
       targetPosition += slideUnit;
       targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 0.3);
-    } else if (e.key === "ArrowRight") {
+    } else if (e.key === 'ArrowRight') {
       targetPosition -= slideUnit;
       targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 0.3);
     }
   });
 
   window.addEventListener(
-    "wheel",
-    (e) => {
+    'wheel',
+    e => {
       e.preventDefault();
       const wheelStrength = Math.abs(e.deltaY) * 0.001;
-      targetDistortionFactor = Math.min(
-        1.0,
-        targetDistortionFactor + wheelStrength
-      );
+      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + wheelStrength);
 
       targetPosition -= e.deltaY * settings.wheelSensitivity;
       isScrolling = true;
-      autoScrollSpeed =
-        Math.min(Math.abs(e.deltaY) * 0.0005, 0.05) * Math.sign(e.deltaY);
+      autoScrollSpeed = Math.min(Math.abs(e.deltaY) * 0.0005, 0.05) * Math.sign(e.deltaY);
 
       startUserInteraction();
 
@@ -333,8 +270,8 @@
   );
 
   window.addEventListener(
-    "touchstart",
-    (e) => {
+    'touchstart',
+    e => {
       touchStartX = e.touches[0].clientY;
       touchLastX = touchStartX;
       isScrolling = false;
@@ -345,18 +282,15 @@
   );
 
   window.addEventListener(
-    "touchmove",
-    (e) => {
+    'touchmove',
+    e => {
       e.preventDefault();
       const touchY = e.touches[0].clientY;
       const deltaY = touchY - touchLastX;
       touchLastX = touchY;
 
       const touchStrength = Math.abs(deltaY) * 0.02;
-      targetDistortionFactor = Math.min(
-        1.0,
-        targetDistortionFactor + touchStrength
-      );
+      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + touchStrength);
 
       targetPosition += deltaY * settings.touchSensitivity;
       isScrolling = true;
@@ -364,7 +298,7 @@
     { passive: false }
   );
 
-  window.addEventListener("touchend", () => {
+  window.addEventListener('touchend', () => {
     const velocity = (touchLastX - touchStartX) * 0.005;
     if (Math.abs(velocity) > 0.3) {
       autoScrollSpeed = velocity * settings.momentumMultiplier * 0.05;
@@ -383,7 +317,7 @@
 
   // スライドのサイズを更新する関数
   const updateSlidesSize = () => {
-    const newSize = calculateSlideSize();
+    const newSize = calculateSlideSize(camera);
     slides.forEach((slide, index) => {
       const newGeometry = new THREE.PlaneGeometry(newSize.width, newSize.height, 32, 16);
       slide.geometry.dispose();
@@ -392,7 +326,7 @@
 
       // 位置を更新
       const newTotalWidth = slideCount * newSize.width;
-      slide.position.x = (index * newSize.width) - (newTotalWidth / 2) + currentPosition;
+      slide.position.x = index * newSize.width - newTotalWidth / 2 + currentPosition;
       slide.userData.targetX = slide.position.x - currentPosition;
       slide.userData.currentX = slide.position.x;
 
@@ -440,7 +374,7 @@
   setTimeout(() => {
     initialAnimation.started = true;
     initialAnimation.startTime = performance.now();
-    targetDistortionFactor = 0.5;  // 初期歪み効果の強さ
+    targetDistortionFactor = 0.5; // 初期歪み効果の強さ
   }, initialAnimation.startDelay);
 
   const imgNameElement = document.querySelector('.img__name');
@@ -448,26 +382,26 @@
 
   // 画像ごとのテキスト情報を定義
   const imageDescriptions: { [key: number]: string } = {
-    1: "01 / 250324 / GEN IZAWA",
-    2: "02 / 250324 / GEN IZAWA",
-    3: "03 / 250324 / GEN IZAWA",
-    4: "04 / 250324 / GEN IZAWA",
-    5: "05 / 250324 / GEN IZAWA",
-    6: "06 / 250324 / GEN IZAWA",
-    7: "07 / 250203 / SEVESKIG",
-    8: "08 / 250203 / SEVESKIG",
-    9: "09 / 250203 / SEVESKIG",
-    10: "10 / 250203 / SEVESKIG",
-    11: "11 / 250203 / SEVESKIG",
-    12: "12 / 250203 / SEVESKIG",
-    13: "13 / 250203 / SEVESKIG",
-    14: "14 / 250203 / SEVESKIG",
-    15: "15 / 250203 / SEVESKIG",
-    16: "16 / 2501015 / jisetsu",
-    17: "17 / 251015 / jisetsu",
-    18: "18 / 251015 / jisetsu",
-    19: "19 / 251015 / jisetsu",
-    20: "20 / 251015 / jisetsu",
+    1: '01 / 250324 / GEN IZAWA',
+    2: '02 / 250324 / GEN IZAWA',
+    3: '03 / 250324 / GEN IZAWA',
+    4: '04 / 250324 / GEN IZAWA',
+    5: '05 / 250324 / GEN IZAWA',
+    6: '06 / 250324 / GEN IZAWA',
+    7: '07 / 250203 / SEVESKIG',
+    8: '08 / 250203 / SEVESKIG',
+    9: '09 / 250203 / SEVESKIG',
+    10: '10 / 250203 / SEVESKIG',
+    11: '11 / 250203 / SEVESKIG',
+    12: '12 / 250203 / SEVESKIG',
+    13: '13 / 250203 / SEVESKIG',
+    14: '14 / 250203 / SEVESKIG',
+    15: '15 / 250203 / SEVESKIG',
+    16: '16 / 2501015 / jisetsu',
+    17: '17 / 251015 / jisetsu',
+    18: '18 / 251015 / jisetsu',
+    19: '19 / 251015 / jisetsu',
+    20: '20 / 251015 / jisetsu',
   };
 
   // updateCenterImageIndex関数を更新
@@ -513,7 +447,10 @@
         const progress = elapsed / initialAnimation.duration;
         const eased = easeOutExpo(progress);
         targetPosition = initialAnimation.targetScroll * eased;
-      } else if (!autoScrollStarted && elapsed > initialAnimation.duration + initialAnimation.autoScrollDelay) {
+      } else if (
+        !autoScrollStarted &&
+        elapsed > initialAnimation.duration + initialAnimation.autoScrollDelay
+      ) {
         // 初期アニメーション完了から500ms後に自動スクロール開始
         autoScrollStarted = true;
       }
@@ -523,19 +460,13 @@
     lastTime = time;
 
     const prevPos = currentPosition;
-    currentPosition = THREE.MathUtils.lerp(
-      currentPosition,
-      targetPosition,
-      settings.smoothing
-    );
+    currentPosition = THREE.MathUtils.lerp(currentPosition, targetPosition, settings.smoothing);
 
     const velocity = (currentPosition - prevPos) / deltaTime;
     velocityHistory.shift();
     velocityHistory.push(Math.abs(velocity));
 
-    const avgVelocity =
-      velocityHistory.reduce((sum, val) => sum + val, 0) /
-      velocityHistory.length;
+    const avgVelocity = velocityHistory.reduce((sum, val) => sum + val, 0) / velocityHistory.length;
 
     if (avgVelocity > peakVelocity) {
       peakVelocity = avgVelocity;
@@ -550,7 +481,7 @@
       settings.distortionSmoothing
     );
 
-    slides.forEach((slide) => {
+    slides.forEach(slide => {
       const targetX = slide.userData.targetX + currentPosition;
       slide.userData.currentX = THREE.MathUtils.lerp(
         slide.userData.currentX,
@@ -573,7 +504,11 @@
     });
 
     // 自動スクロールの処理を修正
-    if (autoScrollStarted && !isUserInteracting && time - lastInteractionTime > settings.userInteractionTimeout) {
+    if (
+      autoScrollStarted &&
+      !isUserInteracting &&
+      time - lastInteractionTime > settings.userInteractionTimeout
+    ) {
       targetPosition -= settings.autoScrollSpeed;
     }
 

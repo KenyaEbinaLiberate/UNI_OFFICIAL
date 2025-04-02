@@ -1,0 +1,46 @@
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 99999;
+}
+
+.logo {
+  opacity: 0;
+  transform: scale(0.95);
+  transition:
+    opacity 0.5s ease-out,
+    transform 0.5s ease-out;
+  will-change: transform, opacity;
+}
+
+.logo.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.path {
+  fill: none;
+  stroke: #ebebeb;
+  stroke-width: 0.5;
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
+  transition:
+    stroke-dashoffset 1.5s ease-out,
+    stroke-width 0.5s ease-out,
+    fill-opacity 0.5s ease-out;
+  will-change: stroke-dashoffset, stroke-width, fill-opacity;
+}
+
+.visible .path {
+  stroke-dashoffset: calc(2000 - (var(--scroll-progress) * 20));
+  stroke-width: calc(0.5 + (var(--scroll-progress) * 0.01));
+  fill-opacity: calc(var(--scroll-progress) / 100);
+}

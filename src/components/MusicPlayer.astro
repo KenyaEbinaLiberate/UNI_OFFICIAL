@@ -1,8 +1,12 @@
 <div class="player-container">
   <canvas id="visualizer" style="opacity:0;visibility:hidden;"></canvas>
   <button id="musicPlayer" aria-label="音楽を再生/停止">
-    <span class="play-icon"><img src="/images/play__icon.svg" alt="play" width="10" height="10"></span>
-    <span class="pause-icon" style="display: none;"><img src="/images/pause__icon.svg" alt="pause" width="10" height="10"></span>
+    <span class="play-icon"
+      ><img src="/images/play__icon.svg" alt="play" width="10" height="10" /></span
+    >
+    <span class="pause-icon" style="display: none;"
+      ><img src="/images/pause__icon.svg" alt="pause" width="10" height="10" /></span
+    >
   </button>
 </div>
 
@@ -20,10 +24,7 @@
     audioContext = new AudioContext();
 
     // 2つの音声ファイルを設定
-    audioElements = [
-      new Audio('/sound01.mp3'),
-
-    ];
+    audioElements = [new Audio('/sound01.mp3')];
 
     // 両方の音声ファイルをループ設定に
     audioElements.forEach(audio => {
@@ -134,9 +135,11 @@
 
     for (let i = 0; i < totalPoints; i++) {
       let weight = highWeight;
-      if (i < 32) { // 補間後のインデックスを調整（8倍）
+      if (i < 32) {
+        // 補間後のインデックスを調整（8倍）
         weight = bassWeight;
-      } else if (i < 96) { // 補間後のインデックスを調整（8倍）
+      } else if (i < 96) {
+        // 補間後のインデックスを調整（8倍）
         weight = midWeight;
       }
 
@@ -148,13 +151,13 @@
       }
 
       const amplitude = interpolatedData[i] / 255.0;
-      const barHeight = ((amplitude * weight * 50) + (bandAvg * 0.2)) * (isPlaying ? 1 : 0.3);
+      const barHeight = (amplitude * weight * 50 + bandAvg * 0.2) * (isPlaying ? 1 : 0.3);
       const angle = (i * 2 * Math.PI) / totalPoints;
 
-      const startX = center + (radius * Math.cos(angle));
-      const startY = center + (radius * Math.sin(angle));
-      const endX = center + ((radius + barHeight) * Math.cos(angle));
-      const endY = center + ((radius + barHeight) * Math.sin(angle));
+      const startX = center + radius * Math.cos(angle);
+      const startY = center + radius * Math.sin(angle);
+      const endX = center + (radius + barHeight) * Math.cos(angle);
+      const endY = center + (radius + barHeight) * Math.sin(angle);
 
       ctx.beginPath();
       ctx.moveTo(startX, startY);
@@ -197,8 +200,8 @@
           isPlaying: playing,
           audioElement: audioElements[currentTrackIndex],
           audioContext: audioContext,
-          analyser: analyser
-        }
+          analyser: analyser,
+        },
       })
     );
   };
@@ -235,10 +238,9 @@
     position: fixed;
     top: 0;
     left: 0;
-    width:300px;
+    width: 300px;
     height: 125dvh;
-    z-index:999;
+    z-index: 999;
     pointer-events: none;
   }
-
 </style>

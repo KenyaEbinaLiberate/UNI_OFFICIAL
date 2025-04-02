@@ -4,15 +4,15 @@
 
 <script>
   const messages: string[] = [
-    "FIND YOUR BEST OUTFIT?",
-    "ENJOY LIFE EVEN MORE",
-    "TURN ON SOUND & ENJOY",
-    "FEEL THE CULTURE MORE",
-    "FUN IS COOL",
-    "BE YOUR BEST SELF",
-    "JOIN OUR CREW?",
-    "COME TO ASAKUSA-BASHI",
-    "FEEL FREE TO REACH OUT"
+    'FIND YOUR BEST OUTFIT?',
+    'ENJOY LIFE EVEN MORE',
+    'TURN ON SOUND & ENJOY',
+    'FEEL THE CULTURE MORE',
+    'FUN IS COOL',
+    'BE YOUR BEST SELF',
+    'JOIN OUR CREW?',
+    'COME TO ASAKUSA-BASHI',
+    'FEEL FREE TO REACH OUT',
   ];
 
   const animatedText = document.querySelector('.animated-text') as HTMLParagraphElement;
@@ -21,7 +21,7 @@
   function animateText(text: string): void {
     if (!animatedText) return;
     animatedText.innerHTML = ''; // クリア
-    const chars = [...text];  // スペースを保持するために配列に変換
+    const chars = [...text]; // スペースを保持するために配列に変換
 
     chars.forEach((char: string, index: number) => {
       const span = document.createElement('span');
@@ -39,7 +39,7 @@
       setTimeout(() => {
         span.style.opacity = '1';
         span.style.transform = 'translateY(0)';
-      }, 40 * index);  // 100から50に変更してより素早く表示
+      }, 40 * index); // 100から50に変更してより素早く表示
     });
   }
 
