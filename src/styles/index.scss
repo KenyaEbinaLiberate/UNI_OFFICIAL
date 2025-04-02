@@ -39,6 +39,9 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
     scale: (0.3);
     transform-origin: left top;
     width: 50vw;
+    @media (min-width: 768px) {
+      width: 24vw;
+    }
     img {
       animation: rotate 24s linear infinite;
       width: 100%;
@@ -130,7 +133,7 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
       min-width: 360px;
     }
     @media (min-width: 1024px) {
-      width: 50%;
+      width: 30%;
     }
   }
   .label__area {
@@ -174,15 +177,15 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
 .brand__list {
   position: fixed;
   top: 50%;
-  left: 30px;
-  width: calc(100% - 60px);
+  width: calc(100% - 40px);
+  left: 20px;
   display: flex;
   overflow: hidden;
   z-index: 99;
   transform: translateY(-50%);
   @media (min-width: 768px) {
-    width: calc(100% - 40px);
-    left: 20px;
+    left: 30px;
+    width: calc(100% - 60px);
   }
 
   .brand__list-inner {

@@ -1030,6 +1030,11 @@ a {
   transform-origin: left top;
   width: 50vw;
 }
+@media (min-width: 768px) {
+  .splash__section .splash__logo {
+    width: 24vw;
+  }
+}
 .splash__section .splash__logo img {
   animation: rotate 24s linear infinite;
   width: 100%;
@@ -1134,7 +1139,7 @@ a {
 }
 @media (min-width: 1024px) {
   .head__area .logo__type {
-    width: 50%;
+    width: 30%;
   }
 }
 .head__area .label__area {
@@ -1184,8 +1189,8 @@ a {
 .brand__list {
   position: fixed;
   top: 50%;
-  left: 30px;
-  width: calc(100% - 60px);
+  width: calc(100% - 40px);
+  left: 20px;
   display: flex;
   overflow: hidden;
   z-index: 99;
@@ -1193,8 +1198,8 @@ a {
 }
 @media (min-width: 768px) {
   .brand__list {
-    width: calc(100% - 40px);
-    left: 20px;
+    left: 30px;
+    width: calc(100% - 60px);
   }
 }
 .brand__list .brand__list-inner {
