@@ -409,7 +409,7 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
         p {
           color: $white;
           font-size: 14px;
-          line-height: 1;
+          line-height: 1.5;
           font-weight: 600;
           overflow: hidden;
           span {
@@ -619,9 +619,12 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
   opacity: 0;
   transition: opacity 0.5s ease;
   z-index: 10;
-  width: 100%;
+  width: calc(100% - 40px);
   pointer-events: none;
   mix-blend-mode: difference;
+  @media (min-width: 768px) {
+    width: calc(100% - 60px);
+  }
 }
 
 .idle-message.visible {

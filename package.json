@@ -11,10 +11,14 @@
     "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,scss,md,astro}\""
   },
   "dependencies": {
+    "@astrojs/react": "4.2.3",
     "@types/three": "0.175.0",
     "astro": "^5.5.6",
     "gsap": "3.12.7",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
     "sass": "1.86.1",
+    "sharp": "0.33.5",
     "three": "0.175.0"
   },
   "devDependencies": {
