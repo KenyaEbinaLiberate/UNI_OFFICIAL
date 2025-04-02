@@ -381,7 +381,7 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
     display: none;
   }
   &.is__open {
-    padding: 48px 16px;
+    padding: 16px 16px 48px;
 
     .menu__wrap {
       display: flex;

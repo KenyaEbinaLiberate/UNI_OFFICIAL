@@ -1524,7 +1524,7 @@ a {
   display: none;
 }
 .floating__navi.is__open {
-  padding: 48px 16px;
+  padding: 16px 16px 48px;
 }
 .floating__navi.is__open .menu__wrap {
   display: flex;
