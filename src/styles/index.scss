@@ -190,20 +190,20 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
     left: 30px;
     width: calc(100% - 60px);
   }
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  will-change: transform;
 
   .brand__list-inner {
     display: flex;
     gap: 20px;
-    animation: scrollBrands 30s linear infinite;
+    animation: scrollBrands 45s linear infinite;
     white-space: nowrap;
     padding-right: 20px;
     width: max-content;
     justify-content: space-between;
 
-    &::after {
-      content: attr(data-content);
-      padding-left: 20px;
-    }
     p {
       color: $white;
       font-size: 10px;
@@ -215,7 +215,7 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
       clip-path: inset(0 100% 0 0);
       animation: clipIn 0.3s ease-in-out forwards 1;
 
-      @for $i from 1 through 15 {
+      @for $i from 1 through 33 {
         &:nth-of-type(#{$i}) {
           animation-delay: #{3.5 + ($i * 0.1)}s;
         }
@@ -232,7 +232,7 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
     transform: translateX(0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translateX(calc(-33.33% - 10px));
   }
 }
 
@@ -526,7 +526,7 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
 
 .img__name {
   font-size: 10px;
-  z-index: 5;
+  z-index: 11;
   position: fixed;
   bottom: 64px;
   left: 20px;
@@ -542,5 +542,66 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
     left: 30px;
     bottom: 30px;
     animation: clipIn 0.6s ease-in-out 4.2s forwards 1;
+  }
+}
+
+.scroll-infinity {
+  position: fixed;
+  top: 50%;
+  width: calc(100% - 40px);
+  left: 20px;
+  transform: translateY(-50%);
+  z-index: 99;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  will-change: transform;
+  overflow: hidden;
+
+  @media (min-width: 768px) {
+    left: 30px;
+    width: calc(100% - 60px);
+  }
+
+  &__wrap {
+    display: flex;
+  }
+
+  &__list {
+    display: flex;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    animation: infinity-scroll-left 30s linear infinite;
+    gap: 20px;
+
+    &:hover {
+      animation-play-state: paused;
+    }
+  }
+
+  &__item {
+    p {
+      color: $white;
+      font-size: 10px;
+      line-height: 1.3;
+      font-weight: 500;
+      letter-spacing: 0;
+      scale: 0.8;
+      width: fit-content;
+
+      @media (min-width: 768px) {
+        scale: 1;
+      }
+    }
+  }
+}
+
+@keyframes infinity-scroll-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
   }
 }

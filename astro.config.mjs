@@ -10,6 +10,15 @@ export default defineConfig({
     assetsInclude: ["**/*.mp3", "**/*.svg", "**/*.jpg", "**/*.png"],
     build: {
       assetsInlineLimit: 0,
+      minify: "terser",
+      terserOptions: {
+        compress: {
+          drop_console: true,
+        },
+        format: {
+          comments: false,
+        },
+      },
       rollupOptions: {
         output: {
           assetFileNames: (assetInfo) => {

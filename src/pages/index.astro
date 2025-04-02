@@ -9,8 +9,22 @@ import '../styles/index.scss';
 ---
 
 <!DOCTYPE html>
-<html lang="jp">
+<html lang="ja">
 	<head>
+		<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-0SFQ1XSPTE"></script>
+<script is:inline>
+  //@ts-ignore
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){
+    //@ts-ignore
+    dataLayer.push(arguments);
+  }
+  //@ts-ignore
+  gtag('js', new Date());
+  //@ts-ignore
+  gtag('config', 'G-0SFQ1XSPTE');
+</script>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<meta name="robots" content="index, follow" />
@@ -120,7 +134,7 @@ import '../styles/index.scss';
 		</div>
 <p class="img__name"></p>
 
-<script client:load>
+<script>
 	document.addEventListener('DOMContentLoaded', () => {
 		// splash__sectionにloadクラスを追加
 		setTimeout(() => {
@@ -129,7 +143,6 @@ import '../styles/index.scss';
 				splashSection.classList.add('load');
 			}
 		}, 1500);
-
 	});
 </script>
 
