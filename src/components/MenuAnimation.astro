@@ -119,26 +119,23 @@
 </script>
 
 <style>
-
   :global(.floating__navi) {
-
-
   }
 
   :global(.menu__wrap) {
     z-index: 999;
     position: relative;
+    will-change: opacity, visibility;
   }
 
   :global(.navi__arrow),
   :global(.plus__icon),
   :global(.plus__icon > div) {
     transition: all 0.3s ease;
+    will-change: transform, opacity;
   }
 
   :global(.floating__navi.is__open .plus__icon::before) {
     height: 0 !important;
   }
-
-
 </style>

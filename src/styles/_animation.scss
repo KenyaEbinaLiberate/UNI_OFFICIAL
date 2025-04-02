@@ -93,3 +93,13 @@
     transform: rotateX(0deg) rotateY(360deg) rotateZ(360deg);
   }
 }
+
+// アニメーション要素用のミックスイン
+@mixin optimize-animation {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+.animated-text span {
+  @include optimize-animation;
+}

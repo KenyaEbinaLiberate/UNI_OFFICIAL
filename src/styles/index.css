@@ -1008,6 +1008,11 @@ a {
     transform: rotateX(0deg) rotateY(360deg) rotateZ(360deg);
   }
 }
+.animated-text span {
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
 .splash__section {
   background: rgb(0, 0, 255);
   position: fixed;
