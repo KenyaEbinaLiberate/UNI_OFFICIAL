@@ -3,6 +3,22 @@
 
 <canvas id="canvas"></canvas>
 
+<style>
+  canvas {
+    width: 100%;
+    height: 100dvh;
+  }
+
+  @media (min-width: 768px) {
+    canvas {
+      width: auto;
+      height: 100dvh;
+      aspect-ratio: 9/16;
+      margin: 0 auto;
+    }
+  }
+</style>
+
 <script>
   import * as THREE from 'three';
 
@@ -12,20 +28,38 @@
     antialias: true,
     preserveDrawingBuffer: true,
   });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xe3e3db);
 
-  // カメラの視野角を広げて、より画面いっぱいに表示
+  // カメラの初期化を先に行う
   const camera = new THREE.PerspectiveCamera(
-    45, // より自然な視野角
+    45,
     window.innerWidth / window.innerHeight,
     0.1,
     100
   );
-  camera.position.z = 5; // カメラを後ろに下げる
+  camera.position.z = 5;
+
+  // レスポンシブ対応の関数
+  const updateRendererSize = () => {
+    // キャンバスは常に画面いっぱいに
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+  };
+
+  // 初期設定
+  updateRendererSize();
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  // リサイズイベントの設定
+  window.addEventListener('resize', () => {
+    updateRendererSize();
+    // スライドのサイズも更新
+    slideSize = calculateSlideSize();
+    updateSlidesSize();
+  });
 
   // 1. キャンバスの初期表示設定
   renderer.domElement.style.opacity = '0';
@@ -54,11 +88,21 @@
 
   // スライドのサイズを画面サイズに基づいて計算
   const calculateSlideSize = () => {
+    const isPc = window.innerWidth >= 768;
     const viewportHeight = 2 * Math.tan((camera.fov * Math.PI / 180) / 2) * camera.position.z;
-    const viewportWidth = viewportHeight * (window.innerWidth / window.innerHeight);
+    let viewportWidth;
+
+    if (isPc) {
+      // PCサイズの場合、高さを基準に9:16の比率で幅を計算
+      viewportWidth = (viewportHeight * 9) / 16;
+    } else {
+      // モバイルの場合、画面アスペクト比に合わせる
+      viewportWidth = viewportHeight * (window.innerWidth / window.innerHeight);
+    }
+
     return {
-      width: viewportWidth,     // 100%に変更
-      height: viewportHeight    // 100%に変更
+      width: viewportWidth,
+      height: viewportHeight
     };
   };
 
@@ -273,25 +317,18 @@
     endUserInteraction();
   });
 
-  // リサイズ時の処理を改善
-  window.addEventListener("resize", () => {
-    // ビューポートのサイズを更新
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-
-    // スライドのサイズを更新
-    slideSize = calculateSlideSize();
+  // スライドのサイズを更新する関数
+  const updateSlidesSize = () => {
+    const newSize = calculateSlideSize();
     slides.forEach((slide, index) => {
-      // ジオメトリを更新
-      const newGeometry = new THREE.PlaneGeometry(slideSize.width, slideSize.height, 32, 16);
+      const newGeometry = new THREE.PlaneGeometry(newSize.width, newSize.height, 32, 16);
       slide.geometry.dispose();
       slide.geometry = newGeometry;
       slide.userData.originalVertices = [...newGeometry.attributes.position.array];
 
       // 位置を更新
-      const newTotalWidth = slideCount * slideSize.width;
-      slide.position.x = (index * slideSize.width) - (newTotalWidth / 2) + currentPosition;
+      const newTotalWidth = slideCount * newSize.width;
+      slide.position.x = (index * newSize.width) - (newTotalWidth / 2) + currentPosition;
       slide.userData.targetX = slide.position.x - currentPosition;
       slide.userData.currentX = slide.position.x;
 
@@ -299,20 +336,22 @@
       if (slide.material.map) {
         const texture = slide.material.map;
         const imgAspect = texture.image.width / texture.image.height;
-        const slideAspect = slideSize.width / slideSize.height;
+        const slideAspect = newSize.width / newSize.height;
 
         if (imgAspect > slideAspect) {
+          // 画像が横長の場合、高さに合わせる
           const scale = slideAspect / imgAspect;
-          texture.repeat.set(scale, 1);
-          texture.offset.x = (1 - scale) / 2;
-        } else {
-          const scale = imgAspect / slideAspect;
           texture.repeat.set(1, scale);
           texture.offset.y = (1 - scale) / 2;
+        } else {
+          // 画像が縦長の場合、幅に合わせる
+          const scale = imgAspect / slideAspect;
+          texture.repeat.set(scale, 1);
+          texture.offset.x = (1 - scale) / 2;
         }
       }
     });
-  });
+  };
 
   // イージング関数の追加
   const easeOutExpo = (x) => {
@@ -428,19 +467,3 @@
     isUserInteracting = false;
   };
 </script>
-
-<style>
-  canvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100dvh;
-    z-index: 1;
-    opacity: 0;
-    transform: translateX(100px);
-    will-change: opacity, transform;
-  }
-
-
-</style>

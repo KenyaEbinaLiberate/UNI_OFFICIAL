@@ -21,13 +21,13 @@
 
     // 2つの音声ファイルを設定
     audioElements = [
-      new Audio('/sound.mp3'),
+      new Audio('/sound01.mp3'),
 
     ];
 
-    // 両方の音声ファイルをループしない設定に
+    // 両方の音声ファイルをループ設定に
     audioElements.forEach(audio => {
-      audio.loop = false;
+      audio.loop = true;
     });
 
     // 最初の曲のソースを設定
@@ -171,6 +171,13 @@
     animationId = requestAnimationFrame(drawVisualizer);
   };
 
+  // 時間を「分:秒」形式に変換する関数
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
   // UIの更新
   const updatePlayerUI = () => {
     if (isPlaying) {
@@ -233,4 +240,5 @@
     z-index:999;
     pointer-events: none;
   }
+
 </style>
