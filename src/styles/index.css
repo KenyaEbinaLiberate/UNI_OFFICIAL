@@ -1011,6 +1011,14 @@ a {
 .animated-text span {
   will-change: transform, opacity;
   backface-visibility: hidden;
+  transform: translateZ(0);
+  contain: paint layout;
+}
+
+.message__area {
+  contain: content;
+  position: relative;
+  z-index: 1;
 }
 
 .splash__section {

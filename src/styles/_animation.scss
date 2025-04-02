@@ -98,8 +98,21 @@
 @mixin optimize-animation {
   will-change: transform, opacity;
   backface-visibility: hidden;
+  transform: translateZ(0); // GPUアクセラレーション
+  contain: paint layout; // レイアウトの再計算を制限
+}
+
+// アニメーション要素のコンテナ用ミックスイン
+@mixin optimize-container {
+  contain: content;
+  position: relative;
+  z-index: 1;
 }
 
 .animated-text span {
   @include optimize-animation;
+}
+
+.message__area {
+  @include optimize-container;
 }
