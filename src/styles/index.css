@@ -1393,6 +1393,7 @@ a {
   font-size: 10px;
   color: rgb(255, 255, 255);
   line-height: 1;
+  white-space: nowrap;
   font-weight: 500;
 }
 .floating__navi .plus__icon {
