@@ -67,3 +67,17 @@
     opacity: 1;
   }
 }
+
+@keyframes rotate3d {
+  0% {
+    transform: rotateX(0deg) rotateY(00deg) rotateZ(0deg);
+  }
+
+  10% {
+    transform: rotateX(0deg) rotateY(360deg) rotateZ(360deg);
+  }
+
+  100% {
+    transform: rotateX(0deg) rotateY(360deg) rotateZ(360deg);
+  }
+}

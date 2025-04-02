@@ -1,0 +1,85 @@
+---
+---
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const wrapCharactersInSpan = () => {
+    document.querySelectorAll('.floating__navi .menu__wrap .button p, .floating__navi .menu__wrap .text__link p').forEach(element => {
+      if (!element.querySelector('span')) { // 既にspan要素がない場合のみ実行
+        const text = element.textContent?.trim() || '';
+        element.textContent = '';
+        [...text].forEach((char, index) => {
+          const span = document.createElement('span');
+          span.textContent = char === ' ' ? '\u00A0' : char;
+          span.style.display = 'inline-block';
+          span.style.transition = 'all 0.3s ease-in-out';
+          if (char === ' ') {
+            span.style.width = '0.5em';
+          }
+          element.appendChild(span);
+        });
+      }
+    });
+  };
+
+  const animateSpans = (element: HTMLElement) => {
+    const spans = element.querySelectorAll('span');
+    spans.forEach((span, index) => {
+      span.style.opacity = '0';
+      span.style.transform = 'translateY(20px)';
+
+      setTimeout(() => {
+        span.style.opacity = '1';
+        span.style.transform = 'translateY(0)';
+      }, 40 * index);
+    });
+  };
+
+  const resetSpans = (element: HTMLElement) => {
+    const spans = element.querySelectorAll('span');
+    spans.forEach(span => {
+      span.style.opacity = '';
+      span.style.transform = '';
+    });
+  };
+
+  // メニューが開かれたときにテキストを処理
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      const target = mutation.target as HTMLElement;
+      if (target.classList.contains('is__open')) {
+        wrapCharactersInSpan();
+      }
+    });
+  });
+
+  // ホバーイベントの設定
+  document.querySelectorAll('.floating__navi .menu__wrap .button, .floating__navi .menu__wrap .text__link').forEach(element => {
+    element.addEventListener('mouseenter', () => {
+      const textElement = element.querySelector('p');
+      if (textElement) {
+        animateSpans(textElement);
+      }
+    });
+
+    element.addEventListener('mouseleave', () => {
+      const textElement = element.querySelector('p');
+      if (textElement) {
+        resetSpans(textElement);
+      }
+    });
+  });
+
+  const floatingNavi = document.querySelector('.floating__navi');
+  if (floatingNavi) {
+    observer.observe(floatingNavi, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    // 初期化時にも実行（既にis__openクラスが付いている場合のため）
+    if ((floatingNavi as HTMLElement).classList.contains('is__open')) {
+      wrapCharactersInSpan();
+    }
+  }
+});
+</script>

@@ -4,6 +4,7 @@ import MusicPlayer from '../components/MusicPlayer.astro';
 import AudioVisualizer from '../components/AudioVisualizer.astro';
 import TextAnimation from '../components/TextAnimation.astro';
 import MenuAnimation from '../components/MenuAnimation.astro';
+import ButtonTextAnimation from '../components/ButtonTextAnimation.astro';
 import '../styles/index.scss';
 ---
 
@@ -108,9 +109,14 @@ import '../styles/index.scss';
 		</div>
 		<div class="floating__navi">
 			<figure class="navi__arrow"><img src="/images/arrow.svg" alt="arrow" width="18" height="18"></figure>
+			<div class="message__area">
+				<p class="animated-text"></p>
+			</div>
 			<TextAnimation />
+
+			<ButtonTextAnimation />
 			<MenuAnimation />
-			<div class="plus__icon"><div></div></div>
+			<div class="plus__icon"></div>
 		</div>
 		<div class="menu__overlay"></div>
 
