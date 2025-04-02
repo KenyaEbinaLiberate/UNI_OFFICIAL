@@ -3,6 +3,10 @@
 
 <canvas id="canvas"></canvas>
 <div class="img__name"></div>
+<div class="idle-message" style="display: none;">
+  <div class="message-text">Stillness is a style</div>
+  <div class="current-time"></div>
+</div>
 
 <style>
   canvas {
@@ -32,18 +36,55 @@
     }
   }
 
-
-
   .img__name.visible {
     opacity: 1;
     visibility: visible;
   }
+
+  @media (max-width: 768px) {
+    .message-text {
+      font-size: 1.5rem;
+    }
+
+    .current-time {
+      font-size: 1rem;
+    }
+  }
+
 </style>
 
 <script>
   import * as THREE from 'three';
+  import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+  import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+  import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+  import { GlitchPass } from 'three/examples/jsm/postprocessing/GlitchPass.js';
 
-  const canvas = document.getElementById("canvas");
+  interface SlideInterface extends THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> {
+    userData: {
+      originalVertices: number[];
+      targetX: number;
+      currentX: number;
+      index: number;
+    };
+  }
+
+  interface ExtendedWindow extends Window {
+    scrollTimeout?: ReturnType<typeof setTimeout>;
+  }
+  declare const window: ExtendedWindow;
+
+  const canvas = document.getElementById("canvas") as HTMLCanvasElement;
+  if (!canvas) throw new Error("Canvas element not found");
+
+  const idleMessageElement = document.querySelector('.idle-message') as HTMLElement;
+  const currentTimeElement = document.querySelector('.current-time') as HTMLElement;
+
+  // アイドル状態の管理
+  let idleTimer: ReturnType<typeof setTimeout> | null = null;
+  let isIdle = false;
+  const IDLE_TIMEOUT = 10000; // 10秒
+
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
@@ -133,7 +174,7 @@
   const totalWidth = slideCount * slideSize.width;
   const slideUnit = slideSize.width;
 
-  const slides = [];
+  const slides: SlideInterface[] = [];
   let currentPosition = 0;
   let targetPosition = 0;
   let isScrolling = false;
@@ -151,25 +192,26 @@
   let isUserInteracting = false;
   let lastInteractionTime = 0;
 
-  const correctImageColor = (texture) => {
+  const correctImageColor = (texture: THREE.Texture): THREE.Texture => {
     texture.colorSpace = THREE.SRGBColorSpace;
     return texture;
   };
 
-  const createSlide = (index) => {
+  const createSlide = (index: number): void => {
     const geometry = new THREE.PlaneGeometry(slideSize.width, slideSize.height, 32, 16);
-
     const material = new THREE.MeshBasicMaterial({
       color: 0xffffff,
       side: THREE.DoubleSide,
     });
 
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.x = index * (slideSize.width + slideSize.gap); // ギャップを加えた位置に配置
+    const mesh = new THREE.Mesh(geometry, material) as unknown as SlideInterface;
     mesh.userData = {
       originalVertices: [...geometry.attributes.position.array],
+      targetX: 0,
+      currentX: 0,
       index,
     };
+    mesh.position.x = index * (slideSize.width + slideSize.gap);
 
     const imageIndex = (index % imagesCount) + 1;
     const imagePath = `/img${imageIndex}.jpg`;
@@ -217,7 +259,7 @@
     slide.userData.currentX = slide.position.x;
   });
 
-  const updateCurve = (mesh, worldPositionX, distortionFactor) => {
+  const updateCurve = (mesh: SlideInterface, worldPositionX: number, distortionFactor: number): void => {
     const distortionCenter = new THREE.Vector2(0, 0);
     const distortionRadius = 2.0;
     const maxCurvature = settings.maxDistortion * distortionFactor;
@@ -279,7 +321,9 @@
       startUserInteraction();
 
       // スクロール終了を検知して自動スクロールを再開
-      clearTimeout(window.scrollTimeout);
+      if (window.scrollTimeout) {
+        clearTimeout(window.scrollTimeout);
+      }
       window.scrollTimeout = setTimeout(() => {
         isScrolling = false;
         endUserInteraction();
@@ -374,7 +418,7 @@
   };
 
   // イージング関数の追加
-  const easeOutExpo = (x) => {
+  const easeOutExpo = (x: number): number => {
     return x === 1 ? 1 : 1 - Math.pow(2, -10 * x);
   };
 
@@ -450,7 +494,16 @@
     }
   };
 
-  const animate = (time) => {
+  // ポストプロセッシングの設定
+  const composer = new EffectComposer(renderer);
+  const renderPass = new RenderPass(scene, camera);
+  composer.addPass(renderPass);
+
+  const glitchPass = new GlitchPass();
+  glitchPass.enabled = false;
+  composer.addPass(glitchPass);
+
+  const animate = (time: number): void => {
     requestAnimationFrame(animate);
 
     // 初期アニメーションの処理
@@ -525,7 +578,14 @@
     }
 
     updateCenterImageIndex();
-    renderer.render(scene, camera);
+
+    if (isIdle) {
+      scene.background = new THREE.Color(0xe3e3db);
+    } else {
+      scene.background = new THREE.Color(0xe3e3db);
+    }
+
+    composer.render();
   };
 
   animate(performance.now());
@@ -539,4 +599,66 @@
   const endUserInteraction = () => {
     isUserInteracting = false;
   };
+
+  // アイドル状態の管理関数
+  const startIdleTimer = (): void => {
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      isIdle = true;
+      showIdleEffects();
+    }, IDLE_TIMEOUT);
+  };
+
+  const resetIdleTimer = (): void => {
+    if (isIdle) {
+      hideIdleEffects();
+    }
+    isIdle = false;
+    startIdleTimer();
+  };
+
+  const showIdleEffects = (): void => {
+    if (!idleMessageElement || !currentTimeElement) return;
+
+    idleMessageElement.style.display = 'block';
+    setTimeout(() => {
+      idleMessageElement.classList.add('visible');
+    }, 0);
+
+    updateCurrentTime();
+    // 時刻更新を1秒ごとに行う
+    const timeInterval = setInterval(updateCurrentTime, 1000);
+    idleMessageElement.dataset.timeInterval = timeInterval.toString();
+  };
+
+  const hideIdleEffects = (): void => {
+    if (!idleMessageElement) return;
+
+    idleMessageElement.classList.remove('visible');
+    setTimeout(() => {
+      idleMessageElement.style.display = 'none';
+    }, 500);
+
+    // 時刻更新のインターバルをクリア
+    const timeInterval = parseInt(idleMessageElement.dataset.timeInterval || '0');
+    if (timeInterval) clearInterval(timeInterval);
+  };
+
+  const updateCurrentTime = (): void => {
+    if (!currentTimeElement) return;
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const seconds = now.getSeconds().toString().padStart(2, '0');
+    currentTimeElement.textContent = `${hours}:${minutes}:${seconds}`;
+  };
+
+  // イベントリスナーの追加
+  const userInteractionEvents = ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart'];
+  userInteractionEvents.forEach(eventName => {
+    window.addEventListener(eventName, resetIdleTimer);
+  });
+
+  // 初期タイマーの開始
+  startIdleTimer();
 </script>
