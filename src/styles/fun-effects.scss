@@ -1,0 +1,50 @@
+.cursor-particle {
+  position: fixed;
+  pointer-events: none;
+  width: 10px;
+  height: 10px;
+  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+  border-radius: 50%;
+  z-index: 9999;
+}
+
+.fun-link {
+  position: relative;
+  text-decoration: none;
+  color: #333;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: scale(1.1) rotate(2deg);
+    color: #ff6b6b;
+
+    &::after {
+      content: "✨";
+      position: absolute;
+      right: -20px;
+      animation: sparkle 0.5s infinite alternate;
+    }
+  }
+}
+
+@keyframes sparkle {
+  from {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.5) rotate(45deg);
+    opacity: 0.5;
+  }
+}
+
+.animate-on-scroll {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  &.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

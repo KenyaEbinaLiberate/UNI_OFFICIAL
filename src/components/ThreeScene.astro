@@ -14,7 +14,7 @@
     opacity: 0;
     visibility: hidden;
     transform: translateX(100px);
-    transition: opacity 0.8s ease-out, transform 0.8s ease-out, visibility 0s linear 0s;
+    transition: opacity 1.5s ease-out, transform 1.5s ease-out, visibility 0s linear 0s;
   }
 
   canvas.visible {
@@ -380,12 +380,13 @@
 
   // 3. 初期スライドアニメーションの設定
   const initialAnimation = {
-    startDelay: 2800,
-    duration: 800,
+    startDelay: 2500,
+    duration: 2000,
     targetScroll: -slideUnit * 3,
     started: false,
     startTime: 0,
-    autoScrollDelay: 500
+    autoScrollDelay: 500,
+    autoScrollDuration: 1000,
   };
 
   // 初期アニメーション後に自動スクロールを開始するための変数
