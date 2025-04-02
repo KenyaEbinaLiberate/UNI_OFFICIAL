@@ -7,6 +7,16 @@
   canvas {
     width: 100%;
     height: 100dvh;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateX(100px);
+    transition: opacity 0.8s ease-out, transform 0.8s ease-out, visibility 0s linear 0s;
+  }
+
+  canvas.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
   }
 
   @media (min-width: 768px) {
@@ -61,16 +71,12 @@
     updateSlidesSize();
   });
 
-  // 1. キャンバスの初期表示設定
-  renderer.domElement.style.opacity = '0';
-  renderer.domElement.style.transform = 'translateX(100px)';
-  renderer.domElement.style.transition = 'opacity 0.8s ease-out, transform 0.8s ease-out';
-
-  // 2. フェードインアニメーション設定
+  // フェードインアニメーション設定
   setTimeout(() => {
-    renderer.domElement.style.opacity = '1';
-    renderer.domElement.style.transform = 'translateX(0)';
-  }, 2800);  // フェードイン開始までの遅延時間（2.5秒）
+    if (canvas) {
+      canvas.classList.add('visible');
+    }
+  }, 2800);  // フェードイン開始までの遅延時間（2.8秒）
 
   const settings = {
     wheelSensitivity: 0.01,
