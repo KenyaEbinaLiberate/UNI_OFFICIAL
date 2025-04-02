@@ -351,6 +351,9 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
       line-height: 1;
       white-space: nowrap;
       font-weight: 500;
+      @include smp {
+        transform: translateY(1px);
+      }
     }
   }
   .plus__icon {

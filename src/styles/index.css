@@ -1442,6 +1442,11 @@ a {
   white-space: nowrap;
   font-weight: 500;
 }
+@media screen and (max-width: 768px) {
+  .floating__navi .message__area p {
+    transform: translateY(1px);
+  }
+}
 .floating__navi .plus__icon {
   width: 8px;
   height: 2px;
