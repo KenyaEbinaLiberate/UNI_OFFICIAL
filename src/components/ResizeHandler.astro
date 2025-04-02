@@ -1,0 +1,9 @@
+<script>
+  import { ResizeReloader } from '../utils/resizeReload';
+
+  // ページロード時にResizeReloaderを初期化
+  document.addEventListener('DOMContentLoaded', () => {
+    // 幅の閾値: 300px, デバウンス時間: 1000ms (1秒)
+    new ResizeReloader(300, 1000);
+  });
+</script>

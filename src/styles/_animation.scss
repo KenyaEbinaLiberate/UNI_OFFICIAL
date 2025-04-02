@@ -10,6 +10,18 @@
     scale: 1;
   }
 }
+@keyframes fadeInAnmPC {
+  0% {
+    opacity: 0;
+    bottom: 0;
+    scale: 0.75;
+  }
+  100% {
+    opacity: 1;
+    bottom: 30px;
+    scale: 1;
+  }
+}
 
 @keyframes clipIn {
   0% {

@@ -2,6 +2,7 @@
 ---
 
 <canvas id="canvas"></canvas>
+<div class="img__name"></div>
 
 <style>
   canvas {
@@ -29,6 +30,13 @@
       aspect-ratio: 9/16;
       margin: 0 auto;
     }
+  }
+
+
+
+  .img__name.visible {
+    opacity: 1;
+    visibility: visible;
   }
 </style>
 
@@ -78,6 +86,7 @@
   setTimeout(() => {
     if (canvas) {
       canvas.classList.add('visible');
+      imgNameElement?.classList.add('visible');
     }
   }, 2800);  // フェードイン開始までの遅延時間（2.8秒）
 
@@ -387,6 +396,49 @@
     targetDistortionFactor = 0.5;  // 初期歪み効果の強さ
   }, initialAnimation.startDelay);
 
+  const imgNameElement = document.querySelector('.img__name');
+  let currentCenterImageIndex = 0;
+
+  // 画像ごとのテキスト情報を定義
+  const imageDescriptions: { [key: number]: string } = {
+    1: "01 / 250224 / SEVESKIG / Koma",
+    2: "02 / 250224 / SEVESKIG / Koma",
+    3: "03 / 250224 / SEVESKIG / Ichie",
+    4: "04 / 250224 / SEVESKIG / Koma",
+    5: "05 / 250224 / SEVESKIG / Koma",
+    6: "06 / 250224 / SEVESKIG / Koma",
+    7: "07 / 250224 / SEVESKIG / Koma",
+    8: "08 / 250224 / SEVESKIG / Koma",
+    9: "09 / 250224 / SEVESKIG / Koma",
+    10: "10 / 250224 / SEVESKIG / Koma",
+    11: "11 / 250224 / SEVESKIG / Koma",
+    12: "12 / 250224 / SEVESKIG / Koma",
+  };
+
+  // updateCenterImageIndex関数を更新
+  const updateCenterImageIndex = () => {
+    if (!imgNameElement) return;
+
+    const centerX = 0; // カメラの中心位置
+    let closestDistance = Infinity;
+    let closestIndex = 0;
+
+    slides.forEach((slide, index) => {
+      const distance = Math.abs(slide.position.x);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    });
+
+    const actualImageIndex = (closestIndex % imagesCount) + 1;
+    if (currentCenterImageIndex !== actualImageIndex) {
+      currentCenterImageIndex = actualImageIndex;
+      const description = imageDescriptions[actualImageIndex] || `Image ${actualImageIndex}`;
+      imgNameElement.textContent = description;
+    }
+  };
+
   const animate = (time) => {
     requestAnimationFrame(animate);
 
@@ -461,6 +513,7 @@
       targetPosition -= settings.autoScrollSpeed;
     }
 
+    updateCenterImageIndex();
     renderer.render(scene, camera);
   };
 

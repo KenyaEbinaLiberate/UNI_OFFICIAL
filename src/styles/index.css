@@ -929,6 +929,18 @@ a {
     scale: 1;
   }
 }
+@keyframes fadeInAnmPC {
+  0% {
+    opacity: 0;
+    bottom: 0;
+    scale: 0.75;
+  }
+  100% {
+    opacity: 1;
+    bottom: 30px;
+    scale: 1;
+  }
+}
 @keyframes clipIn {
   0% {
     -webkit-clip-path: inset(0 100% 0 0);
@@ -1012,6 +1024,11 @@ a {
 .splash__section.load .splash__logo {
   scale: 8;
   rotate: 240deg;
+}
+@media (min-width: 768px) {
+  .splash__section.load .splash__logo {
+    scale: 13;
+  }
 }
 .splash__section.load h1 {
   -webkit-clip-path: inset(0 100% 0 0);
@@ -1314,6 +1331,12 @@ a {
   opacity: 0;
   transform-style: preserve-3d;
 }
+@media (min-width: 768px) {
+  #musicPlayer {
+    animation: fadeInAnmPC 0.6s ease-in-out 3.5s forwards 1;
+    right: 30px;
+  }
+}
 @media only screen and (min-width: 1025px) {
   #musicPlayer:hover span {
     animation: rotate3d 3s ease-in-out 0s infinite;
@@ -1354,6 +1377,11 @@ a {
   -webkit-backdrop-filter: blur(4px);
           backdrop-filter: blur(4px);
   animation: fadeInAnm 0.6s ease-in-out 3.5s forwards 1;
+}
+@media (min-width: 768px) {
+  .floating__navi {
+    animation: fadeInAnmPC 0.6s ease-in-out 3.5s forwards 1;
+  }
 }
 @media only screen and (min-width: 1025px) {
   .floating__navi {
@@ -1560,5 +1588,28 @@ a {
   }
   100% {
     transform: translateY(0);
+  }
+}
+.img__name {
+  font-size: 10px;
+  z-index: 5;
+  position: fixed;
+  bottom: 64px;
+  left: 20px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease-out, visibility 0s linear 0s;
+  color: rgba(255, 255, 255, 0.7);
+  scale: 0.7;
+  transform-origin: left bottom;
+  animation: clipIn 0.6s ease-in-out 4.2s forwards 1;
+  -webkit-clip-path: inset(0 100% 0 0);
+          clip-path: inset(0 100% 0 0);
+}
+@media (min-width: 768px) {
+  .img__name {
+    left: 30px;
+    bottom: 30px;
+    animation: clipIn 0.6s ease-in-out 4.2s forwards 1;
   }
 }/*# sourceMappingURL=index.css.map */
