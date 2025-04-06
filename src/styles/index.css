@@ -1170,7 +1170,6 @@ a {
 }
 .head__area .logo__type {
   width: 100%;
-  filter: brightness(0) grayscale(1) invert(1);
 }
 @media (min-width: 768px) {
   .head__area .logo__type {
@@ -1185,7 +1184,6 @@ a {
 }
 .head__area .label__area {
   display: flex;
-  filter: brightness(0) grayscale(1) invert(1);
 }
 .head__area .label__area .label__text {
   font-size: 10px;
@@ -1257,7 +1255,7 @@ a {
   justify-content: space-between;
 }
 .brand__list .brand__list-inner p {
-  color: rgb(255, 255, 255);
+  color: rgb(0, 0, 255);
   font-size: 10px;
   line-height: 1.3;
   font-weight: 500;
@@ -1389,7 +1387,7 @@ a {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.7);
   padding: 4px;
   color: rgb(0, 0, 255);
   -webkit-backdrop-filter: blur(4px);
@@ -1439,7 +1437,7 @@ a {
   width: calc(100% - 80px);
   height: 32px;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.7);
   display: flex;
   flex-flow: row;
   align-items: center;
@@ -1465,7 +1463,7 @@ a {
     cursor: pointer;
   }
   .floating__navi:hover {
-    background: rgba(0, 0, 0, 0.4);
+    background: rgba(255, 255, 255, 0.4);
     scale: 1.1;
   }
   .floating__navi:hover .plus__icon {
@@ -1491,7 +1489,6 @@ a {
 .floating__navi .navi__arrow {
   width: 10px;
   margin-right: 12px;
-  filter: brightness(0) grayscale(1) invert(1);
 }
 .floating__navi .navi__arrow img {
   width: 100%;
@@ -1501,7 +1498,7 @@ a {
 }
 .floating__navi .message__area p {
   font-size: 10px;
-  color: rgb(255, 255, 255);
+  color: rgb(0, 0, 255);
   line-height: 1;
   white-space: nowrap;
   font-weight: 500;
@@ -1518,7 +1515,6 @@ a {
   position: absolute;
   bottom: 14px;
   right: 16px;
-  filter: brightness(0) grayscale(1) invert(1);
   transform-style: preserve-3d;
 }
 .floating__navi .plus__icon::before {
@@ -1536,6 +1532,7 @@ a {
 }
 .floating__navi.is__open {
   padding: 16px 16px 48px;
+  background: rgb(255, 255, 255);
 }
 .floating__navi.is__open .menu__wrap {
   display: flex;
@@ -1550,7 +1547,7 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgb(0, 0, 255);
   padding: 16px;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1568,6 +1565,7 @@ a {
   overflow: hidden;
 }
 .floating__navi.is__open .menu__wrap .button p span {
+  color: rgb(255, 255, 255);
   display: inline-block;
 }
 .floating__navi.is__open .menu__wrap .button figure {
@@ -1596,7 +1594,7 @@ a {
   position: absolute;
   width: 0%;
   height: 2px;
-  background: rgb(255, 255, 255);
+  background: rgb(0, 0, 255);
   bottom: 0;
   left: 0;
   z-index: 1;
@@ -1612,13 +1610,13 @@ a {
   position: absolute;
   width: 100%;
   height: 1px;
-  background: rgb(255, 255, 255);
+  background: rgb(0, 0, 255);
   bottom: 0;
   left: 0;
   z-index: -1;
 }
 .floating__navi.is__open .menu__wrap .text__link p {
-  color: rgb(255, 255, 255);
+  color: rgb(0, 0, 255);
   font-size: 12px;
   line-height: 1;
   font-weight: 600;
@@ -1628,7 +1626,6 @@ a {
   display: inline-block;
 }
 .floating__navi.is__open .menu__wrap .text__link figure {
-  filter: brightness(0) grayscale(1) invert(1);
   rotate: 90deg;
   width: 10px;
   overflow: hidden;
@@ -1646,7 +1643,7 @@ a {
 .floating__navi.is__open .menu__wrap .detail__wrap .label__text {
   width: calc(50% - 8px);
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgb(0, 0, 255);
   line-height: 1.4;
   font-weight: 500;
   scale: 1;
@@ -1656,7 +1653,7 @@ a {
   scale: 0.8;
   transform-origin: left;
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgb(0, 0, 255);
   line-height: 1.4;
   font-weight: 500;
   width: 100%;
@@ -1682,7 +1679,7 @@ a {
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.3s ease-out, visibility 0s linear 0s;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(0, 0, 255, 0.7);
   scale: 0.7;
   transform-origin: left bottom;
   animation: clipIn 0.6s ease-in-out 4.5s forwards 1;
@@ -1730,7 +1727,7 @@ a {
   animation-play-state: paused;
 }
 .scroll-infinity__item p {
-  color: rgb(255, 255, 255);
+  color: rgb(0, 0, 255);
   font-size: 10px;
   line-height: 1.3;
   font-weight: 500;
@@ -1759,7 +1756,7 @@ a {
   left: 50%;
   transform: translate(-50%, -50%);
   text-align: center;
-  color: rgb(255, 255, 255);
+  color: rgb(0, 0, 255);
   opacity: 0;
   transition: opacity 0.5s ease;
   z-index: 10;
