@@ -194,14 +194,16 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
   backface-visibility: hidden;
   transform: translateZ(0);
   will-change: transform;
-
-  .brand__list-inner {
+.brand__list__wrap{
+  width:200vw;
+  display: flex;
+   .brand__list-inner {
     display: flex;
     gap: 20px;
     animation: scrollBrands 45s linear infinite;
     white-space: nowrap;
-    padding-right: 20px;
-    width: max-content;
+    padding:0 2vw;
+    width: 100vw;
     justify-content: space-between;
 
     p {
@@ -225,6 +227,8 @@ $whiteFilter: brightness(0) grayscale(1) invert(1);
       }
     }
   }
+}
+
 }
 
 @keyframes scrollBrands {
