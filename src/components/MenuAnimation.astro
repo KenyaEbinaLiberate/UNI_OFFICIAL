@@ -98,6 +98,12 @@
       // floating__naviにis__openクラスを追加/削除
       floatingNavi.classList.toggle('is__open');
 
+      // all_wrapにmenu__openクラスを追加/削除
+      const allWrap = document.querySelector('.all_wrap');
+      if (allWrap) {
+        allWrap.classList.toggle('menu__open');
+      }
+
       // 矢印の回転
       if (naviArrow) {
         naviArrow.style.display = isMenuOpen ? 'none' : 'block';

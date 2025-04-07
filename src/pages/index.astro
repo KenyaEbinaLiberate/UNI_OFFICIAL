@@ -51,25 +51,24 @@ import '../styles/index.scss';
     />
   </head>
   <body>
+    <div class="floating__navi">
+      <figure class="navi__arrow">
+        <img src="/images/arrow.svg" alt="arrow" width="18" height="18" />
+      </figure>
+      <div class="message__area">
+        <p class="animated-text"></p>
+      </div>
+      <TextAnimation />
+
+      <ButtonTextAnimation />
+      <MenuAnimation />
+      <div class="plus__icon"></div>
+    </div>
+    <div class="all_wrap">
     <AudioVisualizer />
     <ThreeScene />
     <MusicPlayer />
-    <div class="splash__section">
-      <figure class="splash__logo">
-        <img src="/images/mark_gray.svg" width="18" height="18" alt="" />
-      </figure>
-      <h1>UNI OFFICIAL SITE</h1>
-      <div class="skill__wrap head__wrap">
-        <p class="label__text">Astro 2.5.0</p>
-        <p class="label__text">Three.js 0.169.0</p>
-        <p class="label__text">TypeScript</p>
-        <p class="label__text">Web Audio API</p>
-        <p class="label__text">WebGL</p>
-        <p class="label__text">GSAP</p>
-        <p class="label__text">Vite</p>
-        <p class="label__text">Sound by Sono</p>
-      </div>
-    </div>
+
     <div class="head__area">
       <figure class="logo__type">
         <img src="/images/type.svg" alt="UNI OFFICIAL SITE" width="385" height="179" />
@@ -111,20 +110,24 @@ import '../styles/index.scss';
         <p>RETROSUPERFUTURE</p>
       </div></div>
     </div>
-    <div class="floating__navi">
-      <figure class="navi__arrow">
-        <img src="/images/arrow.svg" alt="arrow" width="18" height="18" />
-      </figure>
-      <div class="message__area">
-        <p class="animated-text"></p>
-      </div>
-      <TextAnimation />
 
-      <ButtonTextAnimation />
-      <MenuAnimation />
-      <div class="plus__icon"></div>
-    </div>
     <p class="img__name"></p>
+    </div>    <div class="splash__section">
+      <figure class="splash__logo">
+        <img src="/images/mark_gray.svg" width="18" height="18" alt="" />
+      </figure>
+      <h1>UNI OFFICIAL SITE</h1>
+      <div class="skill__wrap head__wrap">
+        <p class="label__text">Astro 2.5.0</p>
+        <p class="label__text">Three.js 0.169.0</p>
+        <p class="label__text">TypeScript</p>
+        <p class="label__text">Web Audio API</p>
+        <p class="label__text">WebGL</p>
+        <p class="label__text">GSAP</p>
+        <p class="label__text">Vite</p>
+        <p class="label__text">Sound by Sono</p>
+      </div>
+    </div>
 
     <script>
       document.addEventListener('DOMContentLoaded', () => {
