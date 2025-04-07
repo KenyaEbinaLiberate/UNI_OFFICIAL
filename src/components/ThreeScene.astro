@@ -5,12 +5,6 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
 
 <canvas id="canvas"></canvas>
 <div class="img__name"></div>
-<div class="idle-message" style="display: none;">
-  <div class="message-text">
-    <figure><img src="/images/idle_message.svg" alt="logo" /></figure>
-  </div>
-  <div class="current-time"></div>
-</div>
 
 <style>
   canvas {
@@ -144,98 +138,45 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
     return texture;
   };
 
-  // グリッドトランジションのためのシェーダー
-  const transitionVertexShader = `
-    varying vec2 vUv;
-    void main() {
-      vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `;
-
-  const transitionFragmentShader = `
-    uniform sampler2D textureA;
-    uniform sampler2D textureB;
-    uniform float progress;
-    uniform float scrollSpeed; // スクロール速度を追加
-    varying vec2 vUv;
-
-    void main() {
-        // スクロール速度に応じてトランジション効果を変更
-        float transitionWidth = mix(0.1, 0.5, min(1.0, abs(scrollSpeed) / 50.0));
-        float edge = smoothstep(progress - transitionWidth, progress + transitionWidth, vUv.x);
-
-        vec4 texA = texture2D(textureA, vUv);
-        vec4 texB = texture2D(textureB, vUv);
-
-        gl_FragColor = mix(texA, texB, edge);
-    }
-  `;
-
-  const createTransitionMaterial = () => {
-    return new THREE.ShaderMaterial({
-      uniforms: {
-        textureA: { value: null },
-        textureB: { value: null },
-        progress: { value: 0.0 },
-        scrollSpeed: { value: 0.0 },
-      },
-      vertexShader: transitionVertexShader,
-      fragmentShader: transitionFragmentShader,
-      side: THREE.DoubleSide,
-      transparent: true,
-      toneMapped: false,
-      blending: THREE.NormalBlending,
-      depthTest: true,
-      depthWrite: false,
-    });
-  };
-
   const createSlide = (index: number): void => {
     const geometry = new THREE.PlaneGeometry(slideSize.width, slideSize.height, 32, 16);
-    const material = createTransitionMaterial();
+    const material = new THREE.MeshBasicMaterial();
 
-    const mesh = new THREE.Mesh(geometry, material) as unknown as SlideInterface;
-    mesh.userData = {
+    const mesh = new THREE.Mesh(geometry, material);
+    const slideMesh = mesh as unknown as SlideInterface;
+    slideMesh.userData = {
       originalVertices: [...geometry.attributes.position.array],
       targetX: 0,
       currentX: 0,
       index,
+      currentImageIndex: 0,
+      nextTexture: null,
       isTransitioning: false,
-      transitionProgress: 0,
+      transitionProgress: 0
     };
-    mesh.position.x = index * (slideSize.width + slideSize.gap);
+    slideMesh.position.x = index * (slideSize.width + slideSize.gap);
 
-    // スライドの初期位置を設定
-    mesh.position.x -= totalWidth / 2;
-    mesh.userData.targetX = mesh.position.x;
-    mesh.userData.currentX = mesh.position.x;
+    slideMesh.position.x -= totalWidth / 2;
+    slideMesh.userData.targetX = slideMesh.position.x;
+    slideMesh.userData.currentX = slideMesh.position.x;
 
-    // 画像番号の計算（1から20までの範囲で循環）
     const imageNumber = (index % imagesCount) + 1;
     const imagePath = `/img${imageNumber}.jpg`;
-    loadImage(mesh, imagePath, true);
+    loadImage(slideMesh, imagePath);
 
-    scene.add(mesh);
-    slides.push(mesh);
+    scene.add(slideMesh);
+    slides.push(slideMesh);
   };
 
   // 画像読み込み関数を更新
-  const loadImage = (mesh: SlideInterface, imagePath: string, isInitial: boolean = false) => {
+  const loadImage = (mesh: SlideInterface, imagePath: string) => {
     new THREE.TextureLoader().load(
       imagePath,
       texture => {
         correctImageColor(texture);
-
-        const material = mesh.material as THREE.ShaderMaterial;
-        if (isInitial) {
-          material.uniforms.textureA.value = texture;
-          material.uniforms.textureB.value = texture;
-        } else {
-          material.uniforms.textureB.value = texture;
-          mesh.userData.isTransitioning = true;
-          mesh.userData.transitionProgress = 0;
-        }
+        const material = (mesh.material as unknown) as THREE.MeshBasicMaterial;
+        material.map = texture;
+        material.needsUpdate = true;
 
         const imgAspect = texture.image.width / texture.image.height;
         const slideAspect = slideSize.width / slideSize.height;
@@ -265,26 +206,22 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
       slide.geometry = newGeometry;
       slide.userData.originalVertices = [...newGeometry.attributes.position.array];
 
-      // 位置を更新
       const newTotalWidth = slideCount * newSize.width;
       slide.position.x = index * newSize.width - newTotalWidth / 2 + currentPosition;
       slide.userData.targetX = slide.position.x - currentPosition;
       slide.userData.currentX = slide.position.x;
 
-      // テクスチャの調整（もし存在すれば）
-      const material = slide.material as THREE.ShaderMaterial;
-      if (material.uniforms.textureA.value) {
-        const texture = material.uniforms.textureA.value;
+      const material = (slide.material as unknown) as THREE.MeshBasicMaterial;
+      if (material.map) {
+        const texture = material.map;
         const imgAspect = texture.image.width / texture.image.height;
         const slideAspect = newSize.width / newSize.height;
 
         if (imgAspect > slideAspect) {
-          // 画像が横長の場合、高さに合わせる
           const scale = slideAspect / imgAspect;
           texture.repeat.set(1, scale);
           texture.offset.y = (1 - scale) / 2;
         } else {
-          // 画像が縦長の場合、幅に合わせる
           const scale = imgAspect / slideAspect;
           texture.repeat.set(scale, 1);
           texture.offset.x = (1 - scale) / 2;
@@ -379,17 +316,9 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
   const renderPass = new RenderPass(scene, camera);
   composer.addPass(renderPass);
 
-  composer.setSize(window.innerWidth, window.innerHeight);
-  composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-  const glitchPass = new GlitchPass();
-  glitchPass.enabled = false;
-  composer.addPass(glitchPass);
-
   const animate = (time: number): void => {
     requestAnimationFrame(animate);
 
-    // 初期アニメーションの処理
     if (initialAnimation.started) {
       const elapsed = time - initialAnimation.startTime;
       if (elapsed <= initialAnimation.duration) {
@@ -443,7 +372,6 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
       }
     });
 
-    // 自動スクロールの処理を修正
     if (
       autoScrollStarted &&
       !isUserInteracting &&
@@ -453,27 +381,6 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
     }
 
     updateCenterImageIndex();
-
-    if (isIdle) {
-      scene.background = new THREE.Color(0xe3e3db);
-    } else {
-      scene.background = new THREE.Color(0xe3e3db);
-    }
-
-    // トランジションの更新
-    slides.forEach(slide => {
-      if (slide.userData.isTransitioning) {
-        slide.userData.transitionProgress += 0.05; // 固定の遷移速度
-        const material = slide.material as THREE.ShaderMaterial;
-        material.uniforms.progress.value = slide.userData.transitionProgress;
-
-        if (slide.userData.transitionProgress >= 1.0) {
-          slide.userData.isTransitioning = false;
-          slide.userData.transitionProgress = 0;
-          material.uniforms.textureA.value = material.uniforms.textureB.value;
-        }
-      }
-    });
 
     composer.render();
   };
