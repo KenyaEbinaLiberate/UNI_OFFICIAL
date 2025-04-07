@@ -201,14 +201,18 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
       targetX: 0,
       currentX: 0,
       index,
-      currentImageIndex: 0,
       isTransitioning: false,
       transitionProgress: 0,
     };
     mesh.position.x = index * (slideSize.width + slideSize.gap);
 
+    // スライドの初期位置を設定
+    mesh.position.x -= totalWidth / 2;
+    mesh.userData.targetX = mesh.position.x;
+    mesh.userData.currentX = mesh.position.x;
+
     // 画像番号の計算（1から20までの範囲で循環）
-    const imageNumber = (index % 20) + 1;
+    const imageNumber = (index % imagesCount) + 1;
     const imagePath = `/img${imageNumber}.jpg`;
     loadImage(mesh, imagePath, true);
 
@@ -547,4 +551,121 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
 
   // 初期タイマーの開始
   startIdleTimer();
+
+  // updateCurve関数を追加
+  const updateCurve = (
+    mesh: SlideInterface,
+    worldPositionX: number,
+    distortionFactor: number
+  ): void => {
+    const distortionCenter = new THREE.Vector2(0, 0);
+    const distortionRadius = 2.0;
+    const maxCurvature = settings.maxDistortion * distortionFactor;
+
+    const positionAttribute = mesh.geometry.attributes.position;
+    const originalVertices = mesh.userData.originalVertices;
+
+    for (let i = 0; i < positionAttribute.count; i++) {
+      const x = originalVertices[i * 3];
+      const y = originalVertices[i * 3 + 1];
+
+      const vertexWorldPosX = worldPositionX + x;
+      const distFromCenter = Math.sqrt(
+        Math.pow(vertexWorldPosX - distortionCenter.x, 2) + Math.pow(y - distortionCenter.y, 2)
+      );
+
+      const distortionStrength = Math.max(0, 1 - distFromCenter / distortionRadius);
+      const curveZ = Math.pow(Math.sin((distortionStrength * Math.PI) / 2), 1.5) * maxCurvature;
+
+      positionAttribute.setZ(i, curveZ);
+    }
+
+    positionAttribute.needsUpdate = true;
+    mesh.geometry.computeVertexNormals();
+  };
+
+  // スライドの作成を追加
+  for (let i = 0; i < slideCount; i++) {
+    createSlide(i);
+  }
+
+  // イベントリスナーを追加
+  window.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft') {
+      targetPosition += slideUnit;
+      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 0.3);
+    } else if (e.key === 'ArrowRight') {
+      targetPosition -= slideUnit;
+      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 0.3);
+    }
+  });
+
+  window.addEventListener(
+    'wheel',
+    e => {
+      e.preventDefault();
+      const wheelStrength = Math.abs(e.deltaY) * 0.001;
+      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + wheelStrength);
+
+      targetPosition -= e.deltaY * settings.wheelSensitivity;
+      isScrolling = true;
+      autoScrollSpeed = Math.min(Math.abs(e.deltaY) * 0.0005, 0.05) * Math.sign(e.deltaY);
+
+      startUserInteraction();
+
+      // スクロール終了を検知して自動スクロールを再開
+      if (window.scrollTimeout) {
+        clearTimeout(window.scrollTimeout);
+      }
+      window.scrollTimeout = setTimeout(() => {
+        isScrolling = false;
+        endUserInteraction();
+      }, 150);
+    },
+    { passive: false }
+  );
+
+  window.addEventListener(
+    'touchstart',
+    e => {
+      touchStartX = e.touches[0].clientY;
+      touchLastX = touchStartX;
+      isScrolling = false;
+      startUserInteraction();
+    },
+    { passive: false }
+  );
+
+  window.addEventListener(
+    'touchmove',
+    e => {
+      e.preventDefault();
+      const touchY = e.touches[0].clientY;
+      const deltaY = touchY - touchLastX;
+      touchLastX = touchY;
+
+      const touchStrength = Math.abs(deltaY) * 0.02;
+      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + touchStrength);
+
+      targetPosition += deltaY * settings.touchSensitivity;
+      isScrolling = true;
+    },
+    { passive: false }
+  );
+
+  window.addEventListener('touchend', () => {
+    const velocity = (touchLastX - touchStartX) * 0.005;
+    if (Math.abs(velocity) > 0.3) {
+      autoScrollSpeed = velocity * settings.momentumMultiplier * 0.05;
+      targetDistortionFactor = Math.min(
+        1.0,
+        Math.abs(velocity) * 2.5 * settings.distortionSensitivity
+      );
+      isScrolling = true;
+      setTimeout(() => {
+        isScrolling = false;
+      }, 5000);
+    }
+    endUserInteraction();
+  });
 </script>
