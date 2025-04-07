@@ -69,13 +69,15 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
   // アイドル状態の管理
   let idleTimer: ReturnType<typeof setTimeout> | null = null;
   let isIdle = false;
-  const IDLE_TIMEOUT = 10000; // 10秒
+  const IDLE_TIMEOUT = 600000; // 10分
 
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
     preserveDrawingBuffer: true,
   });
+  renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+  renderer.toneMapping = THREE.NoToneMapping;
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0xe3e3db);
@@ -114,7 +116,7 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
 
   let slideSize = calculateSlideSize(camera);
   const gap = 0; // ギャップを0に設定
-  const slideCount = 20;
+  const slideCount = 8;
   const imagesCount = 20;
   const totalWidth = slideCount * slideSize.width;
   const slideUnit = slideSize.width;
@@ -138,16 +140,60 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
   let lastInteractionTime = 0;
 
   const correctImageColor = (texture: THREE.Texture): THREE.Texture => {
-    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.colorSpace = THREE.LinearSRGBColorSpace;
     return texture;
+  };
+
+  // グリッドトランジションのためのシェーダー
+  const transitionVertexShader = `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `;
+
+  const transitionFragmentShader = `
+    uniform sampler2D textureA;
+    uniform sampler2D textureB;
+    uniform float progress;
+    uniform float scrollSpeed; // スクロール速度を追加
+    varying vec2 vUv;
+
+    void main() {
+        // スクロール速度に応じてトランジション効果を変更
+        float transitionWidth = mix(0.1, 0.5, min(1.0, abs(scrollSpeed) / 50.0));
+        float edge = smoothstep(progress - transitionWidth, progress + transitionWidth, vUv.x);
+
+        vec4 texA = texture2D(textureA, vUv);
+        vec4 texB = texture2D(textureB, vUv);
+
+        gl_FragColor = mix(texA, texB, edge);
+    }
+  `;
+
+  const createTransitionMaterial = () => {
+    return new THREE.ShaderMaterial({
+      uniforms: {
+        textureA: { value: null },
+        textureB: { value: null },
+        progress: { value: 0.0 },
+        scrollSpeed: { value: 0.0 },
+      },
+      vertexShader: transitionVertexShader,
+      fragmentShader: transitionFragmentShader,
+      side: THREE.DoubleSide,
+      transparent: true,
+      toneMapped: false,
+      blending: THREE.NormalBlending,
+      depthTest: true,
+      depthWrite: false,
+    });
   };
 
   const createSlide = (index: number): void => {
     const geometry = new THREE.PlaneGeometry(slideSize.width, slideSize.height, 32, 16);
-    const material = new THREE.MeshBasicMaterial({
-      color: 0xffffff,
-      side: THREE.DoubleSide,
-    });
+    const material = createTransitionMaterial();
 
     const mesh = new THREE.Mesh(geometry, material) as unknown as SlideInterface;
     mesh.userData = {
@@ -155,20 +201,38 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
       targetX: 0,
       currentX: 0,
       index,
+      currentImageIndex: 0,
+      isTransitioning: false,
+      transitionProgress: 0,
     };
     mesh.position.x = index * (slideSize.width + slideSize.gap);
 
-    const imageIndex = (index % imagesCount) + 1;
-    const imagePath = `/img${imageIndex}.jpg`;
+    // 画像番号の計算（1から20までの範囲で循環）
+    const imageNumber = (index % 20) + 1;
+    const imagePath = `/img${imageNumber}.jpg`;
+    loadImage(mesh, imagePath, true);
 
+    scene.add(mesh);
+    slides.push(mesh);
+  };
+
+  // 画像読み込み関数を更新
+  const loadImage = (mesh: SlideInterface, imagePath: string, isInitial: boolean = false) => {
     new THREE.TextureLoader().load(
       imagePath,
       texture => {
         correctImageColor(texture);
-        material.map = texture;
-        material.needsUpdate = true;
 
-        // オブジェクトフィットの実装を調整
+        const material = mesh.material as THREE.ShaderMaterial;
+        if (isInitial) {
+          material.uniforms.textureA.value = texture;
+          material.uniforms.textureB.value = texture;
+        } else {
+          material.uniforms.textureB.value = texture;
+          mesh.userData.isTransitioning = true;
+          mesh.userData.transitionProgress = 0;
+        }
+
         const imgAspect = texture.image.width / texture.image.height;
         const slideAspect = slideSize.width / slideSize.height;
 
@@ -176,11 +240,9 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
         texture.offset.set(0, 0);
 
         if (imgAspect > slideAspect) {
-          // 画像が横長の場合、幅に合わせる
           texture.repeat.set(1, 1);
           texture.offset.y = (1 - slideAspect / imgAspect) / 2;
         } else {
-          // 画像が縦長の場合、高さに合わせる
           texture.repeat.set(1, 1);
           texture.offset.x = (1 - imgAspect / slideAspect) / 2;
         }
@@ -188,134 +250,7 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
       undefined,
       err => console.warn(`Couldn't load image ${imagePath}`, err)
     );
-
-    scene.add(mesh);
-    slides.push(mesh);
   };
-
-  // スライドの作成
-  for (let i = 0; i < slideCount; i++) {
-    createSlide(i);
-  }
-
-  slides.forEach(slide => {
-    slide.position.x -= totalWidth / 2;
-    slide.userData.targetX = slide.position.x;
-    slide.userData.currentX = slide.position.x;
-  });
-
-  const updateCurve = (
-    mesh: SlideInterface,
-    worldPositionX: number,
-    distortionFactor: number
-  ): void => {
-    const distortionCenter = new THREE.Vector2(0, 0);
-    const distortionRadius = 2.0;
-    const maxCurvature = settings.maxDistortion * distortionFactor;
-
-    const positionAttribute = mesh.geometry.attributes.position;
-    const originalVertices = mesh.userData.originalVertices;
-
-    for (let i = 0; i < positionAttribute.count; i++) {
-      const x = originalVertices[i * 3];
-      const y = originalVertices[i * 3 + 1];
-
-      const vertexWorldPosX = worldPositionX + x;
-      const distFromCenter = Math.sqrt(
-        Math.pow(vertexWorldPosX - distortionCenter.x, 2) + Math.pow(y - distortionCenter.y, 2)
-      );
-
-      const distortionStrength = Math.max(0, 1 - distFromCenter / distortionRadius);
-      const curveZ = Math.pow(Math.sin((distortionStrength * Math.PI) / 2), 1.5) * maxCurvature;
-
-      positionAttribute.setZ(i, curveZ);
-    }
-
-    positionAttribute.needsUpdate = true;
-    mesh.geometry.computeVertexNormals();
-  };
-
-  // イベントリスナー
-  window.addEventListener('keydown', e => {
-    if (e.key === 'ArrowLeft') {
-      targetPosition += slideUnit;
-      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 0.3);
-    } else if (e.key === 'ArrowRight') {
-      targetPosition -= slideUnit;
-      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 0.3);
-    }
-  });
-
-  window.addEventListener(
-    'wheel',
-    e => {
-      e.preventDefault();
-      const wheelStrength = Math.abs(e.deltaY) * 0.001;
-      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + wheelStrength);
-
-      targetPosition -= e.deltaY * settings.wheelSensitivity;
-      isScrolling = true;
-      autoScrollSpeed = Math.min(Math.abs(e.deltaY) * 0.0005, 0.05) * Math.sign(e.deltaY);
-
-      startUserInteraction();
-
-      // スクロール終了を検知して自動スクロールを再開
-      if (window.scrollTimeout) {
-        clearTimeout(window.scrollTimeout);
-      }
-      window.scrollTimeout = setTimeout(() => {
-        isScrolling = false;
-        endUserInteraction();
-      }, 150);
-    },
-    { passive: false }
-  );
-
-  window.addEventListener(
-    'touchstart',
-    e => {
-      touchStartX = e.touches[0].clientY;
-      touchLastX = touchStartX;
-      isScrolling = false;
-
-      startUserInteraction();
-    },
-    { passive: false }
-  );
-
-  window.addEventListener(
-    'touchmove',
-    e => {
-      e.preventDefault();
-      const touchY = e.touches[0].clientY;
-      const deltaY = touchY - touchLastX;
-      touchLastX = touchY;
-
-      const touchStrength = Math.abs(deltaY) * 0.02;
-      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + touchStrength);
-
-      targetPosition += deltaY * settings.touchSensitivity;
-      isScrolling = true;
-    },
-    { passive: false }
-  );
-
-  window.addEventListener('touchend', () => {
-    const velocity = (touchLastX - touchStartX) * 0.005;
-    if (Math.abs(velocity) > 0.3) {
-      autoScrollSpeed = velocity * settings.momentumMultiplier * 0.05;
-      targetDistortionFactor = Math.min(
-        1.0,
-        Math.abs(velocity) * 2.5 * settings.distortionSensitivity
-      );
-      isScrolling = true;
-      setTimeout(() => {
-        isScrolling = false;
-      }, 5000);
-    }
-
-    endUserInteraction();
-  });
 
   // スライドのサイズを更新する関数
   const updateSlidesSize = () => {
@@ -333,8 +268,9 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
       slide.userData.currentX = slide.position.x;
 
       // テクスチャの調整（もし存在すれば）
-      if (slide.material.map) {
-        const texture = slide.material.map;
+      const material = slide.material as THREE.ShaderMaterial;
+      if (material.uniforms.textureA.value) {
+        const texture = material.uniforms.textureA.value;
         const imgAspect = texture.image.width / texture.image.height;
         const slideAspect = newSize.width / newSize.height;
 
@@ -431,9 +367,16 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
   };
 
   // ポストプロセッシングの設定
-  const composer = new EffectComposer(renderer);
+  const renderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight, {
+    colorSpace: THREE.SRGBColorSpace,
+    samples: 4,
+  });
+  const composer = new EffectComposer(renderer, renderTarget);
   const renderPass = new RenderPass(scene, camera);
   composer.addPass(renderPass);
+
+  composer.setSize(window.innerWidth, window.innerHeight);
+  composer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
   const glitchPass = new GlitchPass();
   glitchPass.enabled = false;
@@ -453,7 +396,6 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
         !autoScrollStarted &&
         elapsed > initialAnimation.duration + initialAnimation.autoScrollDelay
       ) {
-        // 初期アニメーション完了から500ms後に自動スクロール開始
         autoScrollStarted = true;
       }
     }
@@ -467,14 +409,6 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
     const velocity = (currentPosition - prevPos) / deltaTime;
     velocityHistory.shift();
     velocityHistory.push(Math.abs(velocity));
-
-    const avgVelocity = velocityHistory.reduce((sum, val) => sum + val, 0) / velocityHistory.length;
-
-    if (avgVelocity > peakVelocity) {
-      peakVelocity = avgVelocity;
-    } else {
-      peakVelocity *= 0.95;
-    }
 
     targetDistortionFactor *= settings.distortionDecay;
     currentDistortionFactor = THREE.MathUtils.lerp(
@@ -521,6 +455,21 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
     } else {
       scene.background = new THREE.Color(0xe3e3db);
     }
+
+    // トランジションの更新
+    slides.forEach(slide => {
+      if (slide.userData.isTransitioning) {
+        slide.userData.transitionProgress += 0.05; // 固定の遷移速度
+        const material = slide.material as THREE.ShaderMaterial;
+        material.uniforms.progress.value = slide.userData.transitionProgress;
+
+        if (slide.userData.transitionProgress >= 1.0) {
+          slide.userData.isTransitioning = false;
+          slide.userData.transitionProgress = 0;
+          material.uniforms.textureA.value = material.uniforms.textureB.value;
+        }
+      }
+    });
 
     composer.render();
   };

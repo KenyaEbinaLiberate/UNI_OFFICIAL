@@ -1,11 +1,16 @@
 import * as THREE from 'three';
 
-export interface SlideInterface extends THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial> {
+export interface SlideInterface extends THREE.Mesh {
+  material: THREE.ShaderMaterial;
   userData: {
     originalVertices: number[];
     targetX: number;
     currentX: number;
     index: number;
+    currentImageIndex: number;
+    nextTexture: THREE.Texture | null;
+    isTransitioning: boolean;
+    transitionProgress: number;
   };
 }
 
