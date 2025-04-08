@@ -179,15 +179,24 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
                 const imgAspect = texture.image.width / texture.image.height;
                 const slideAspect = slideSize.width / slideSize.height;
 
+                // テクスチャの中心を基準に調整
+                texture.center.set(0.5, 0.5);
+
                 if (imgAspect > slideAspect) {
+                    // 画像が横長の場合
                     const scale = slideAspect / imgAspect;
                     texture.repeat.set(1, scale);
                     texture.offset.y = (1 - scale) / 2;
                 } else {
+                    // 画像が縦長の場合
                     const scale = imgAspect / slideAspect;
                     texture.repeat.set(scale, 1);
                     texture.offset.x = (1 - scale) / 2;
                 }
+
+                // テクスチャのラップモードを設定
+                texture.wrapS = THREE.ClampToEdgeWrapping;
+                texture.wrapT = THREE.ClampToEdgeWrapping;
             }
         },
         undefined,
@@ -219,15 +228,24 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
             const imgAspect = texture.image.width / texture.image.height;
             const slideAspect = newSize.width / newSize.height;
 
+            // テクスチャの中心を基準に調整
+            texture.center.set(0.5, 0.5);
+
             if (imgAspect > slideAspect) {
+                // 画像が横長の場合
                 const scale = slideAspect / imgAspect;
                 texture.repeat.set(1, scale);
                 texture.offset.y = (1 - scale) / 2;
             } else {
+                // 画像が縦長の場合
                 const scale = imgAspect / slideAspect;
                 texture.repeat.set(scale, 1);
                 texture.offset.x = (1 - scale) / 2;
             }
+
+            // テクスチャのラップモードを設定
+            texture.wrapS = THREE.ClampToEdgeWrapping;
+            texture.wrapT = THREE.ClampToEdgeWrapping;
         }
     });
   };
@@ -384,12 +402,15 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
 
     updateCenterImageIndex();
 
-    // 歪みの更新
+    // 歪みの更新（liquidエフェクト用）
     slides.forEach(slide => {
       const material = slide.material as THREE.ShaderMaterial;
       material.uniforms.uTime.value = time * 0.001;
       material.uniforms.uDistortionStrength.value = currentDistortionFactor;
     });
+
+    // targetDistortionFactorの減衰を調整（より長い余韻に）
+    targetDistortionFactor *= 1; // 0.95から0.98に変更してより長い余韻に
 
     composer.render();
   };
@@ -474,26 +495,12 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
     worldPositionX: number,
     distortionFactor: number
   ): void => {
-    const distortionCenter = new THREE.Vector2(0, 0);
-    const distortionRadius = 2.0;
-    const maxCurvature = settings.maxDistortion * distortionFactor;
-
+    // 歪み効果を無効化（Z座標を0に設定）
     const positionAttribute = mesh.geometry.attributes.position;
     const originalVertices = mesh.userData.originalVertices;
 
     for (let i = 0; i < positionAttribute.count; i++) {
-      const x = originalVertices[i * 3];
-      const y = originalVertices[i * 3 + 1];
-
-      const vertexWorldPosX = worldPositionX + x;
-      const distFromCenter = Math.sqrt(
-        Math.pow(vertexWorldPosX - distortionCenter.x, 2) + Math.pow(y - distortionCenter.y, 2)
-      );
-
-      const distortionStrength = Math.max(0, 1 - distFromCenter / distortionRadius);
-      const curveZ = Math.pow(Math.sin((distortionStrength * Math.PI) / 2), 1.5) * maxCurvature;
-
-      positionAttribute.setZ(i, curveZ);
+        positionAttribute.setZ(i, 0);
     }
 
     positionAttribute.needsUpdate = true;
@@ -509,10 +516,12 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
   window.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft') {
       targetPosition += slideUnit;
-      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 0.3);
+      // キー操作時のliquidエフェクト（感度2倍）
+      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 1.6); // 0.8から1.6に増加
     } else if (e.key === 'ArrowRight') {
       targetPosition -= slideUnit;
-      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 0.3);
+      // キー操作時のliquidエフェクト（感度2倍）
+      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 1.6); // 0.8から1.6に増加
     }
   });
 
@@ -520,7 +529,8 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
     'wheel',
     e => {
       e.preventDefault();
-      const wheelStrength = Math.abs(e.deltaY) * 0.001;
+      // ホイールの強さに応じてliquidエフェクトを適用（感度2倍）
+      const wheelStrength = Math.abs(e.deltaY) * 0.016; // 0.008から0.016に増加
       targetDistortionFactor = Math.min(1.0, targetDistortionFactor + wheelStrength);
 
       targetPosition -= e.deltaY * settings.wheelSensitivity;
@@ -529,14 +539,13 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
 
       startUserInteraction();
 
-      // スクロール終了を検知して自動スクロールを再開
       if (window.scrollTimeout) {
         clearTimeout(window.scrollTimeout);
       }
       window.scrollTimeout = setTimeout(() => {
         isScrolling = false;
         endUserInteraction();
-      }, 150);
+      }, 3500);
     },
     { passive: false }
   );
@@ -560,7 +569,8 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
       const deltaY = touchY - touchLastX;
       touchLastX = touchY;
 
-      const touchStrength = Math.abs(deltaY) * 0.02;
+      // タッチの強さに応じてliquidエフェクトを適用（感度2倍）
+      const touchStrength = Math.abs(deltaY) * 0.24; // 0.12から0.24に増加
       targetDistortionFactor = Math.min(1.0, targetDistortionFactor + touchStrength);
 
       targetPosition += deltaY * settings.touchSensitivity;
@@ -573,10 +583,8 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
     const velocity = (touchLastX - touchStartX) * 0.005;
     if (Math.abs(velocity) > 0.3) {
       autoScrollSpeed = velocity * settings.momentumMultiplier * 0.05;
-      targetDistortionFactor = Math.min(
-        1.0,
-        Math.abs(velocity) * 2.5 * settings.distortionSensitivity
-      );
+      // 慣性スクロール時のliquidエフェクト（感度2倍）
+      targetDistortionFactor = Math.min(1.0, Math.abs(velocity) * 5.0 * settings.distortionSensitivity); // 2.5から5.0に増加
       isScrolling = true;
       setTimeout(() => {
         isScrolling = false;

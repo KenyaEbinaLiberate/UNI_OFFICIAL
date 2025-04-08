@@ -101,28 +101,34 @@ export const fragmentShader = `
         vec2 uvFromCenter = uv - vec2(0.5);
         float edgeWeight = 1.0 - smoothstep(0.3, 0.48, length(uvFromCenter));
 
-        // 不規則な歪みパターン
+        // アスペクト比を考慮した歪みの強さの調整
+        vec2 aspectAdjust = vec2(1.0, 1.777777778); // 16:9のアスペクト比に基づく調整
         float distortion = vDistortion * 0.1;
         vec2 distortedUv = uv;
 
-        // 複数の非線形な歪みを重ね合わせ（エッジで抑制）
+        // 複数の非線形な歪みを重ね合わせ（エッジで抑制、アスペクト比考慮）
         vec2 noise1 = vec2(
             random(uv + t * 0.1) * 2.0 - 1.0,
-            random(uv + t * 0.2) * 2.0 - 1.0
+            (random(uv + t * 0.2) * 2.0 - 1.0) / aspectAdjust.y
         ) * distortion * 0.2 * edgeWeight;
 
         vec2 noise2 = vec2(
             random(uv * 1.5 - t * 0.15) * 2.0 - 1.0,
-            random(uv * 1.5 + t * 0.25) * 2.0 - 1.0
+            (random(uv * 1.5 + t * 0.25) * 2.0 - 1.0) / aspectAdjust.y
         ) * distortion * 0.15 * edgeWeight;
 
         vec2 noise3 = vec2(
             random(uv * 2.0 + t * 0.3) * 2.0 - 1.0,
-            random(uv * 2.0 - t * 0.35) * 2.0 - 1.0
+            (random(uv * 2.0 - t * 0.35) * 2.0 - 1.0) / aspectAdjust.y
         ) * distortion * 0.1 * edgeWeight;
 
-        // 歪みを適用（エッジでは最小限に）
-        distortedUv += noise1 + noise2 + noise3;
+        // アスペクト比を考慮した歪みの適用
+        vec2 totalNoise = noise1 + noise2 + noise3;
+        distortedUv.x += totalNoise.x;
+        distortedUv.y += totalNoise.y;
+
+        // UV座標が範囲外にならないように制限
+        distortedUv = clamp(distortedUv, vec2(0.0), vec2(1.0));
 
         // テクスチャのサンプリング
         vec4 color = texture2D(uTexture, distortedUv);

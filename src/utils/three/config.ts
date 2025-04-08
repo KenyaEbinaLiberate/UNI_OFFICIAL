@@ -7,16 +7,16 @@ export const settings = {
   smoothing: 0.15,
   slideLerp: 0.075,
   distortionDecay: 0.98,
-  maxDistortion: 4.0,
-  distortionSensitivity: 0.2,
+  maxDistortion: 32.0,
+  distortionSensitivity: 1.6,
   distortionSmoothing: 0.05,
   autoScrollSpeed: 0.001,
   userInteractionTimeout: 500,
   liquidEffect: {
-    speed: 0.5,
-    strength: 1.0,
+    speed: 0.4,
+    strength: 32.0,
     frequency: 2.0,
-    amplitude: 0.1
+    amplitude: 320
   }
 };
 
