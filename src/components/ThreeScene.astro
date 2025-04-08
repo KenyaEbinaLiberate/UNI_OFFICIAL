@@ -6,6 +6,7 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
 
 <canvas id="canvas"></canvas>
 <div class="img__name"></div>
+<div class="img__filter"></div>
 
 <style>
   canvas {
@@ -27,6 +28,26 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
     opacity: 1;
     visibility: visible;
     transform: translateX(0);
+  }
+
+  .img__filter {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100dvh;
+    background: rgba(0, 0, 255, 1);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    mix-blend-mode: screen;
+    transition: opacity 0.2s ease-out;
+    backdrop-filter: brightness(1.2) contrast(2);
+    z-index: 1;
+  }
+
+  .img__filter.visible {
+    visibility: visible;
   }
 
   @media (min-width: 768px) {
@@ -143,64 +164,64 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
   const createSlide = (index: number) => {
     const geometry = new THREE.PlaneGeometry(slideSize.width, slideSize.height, 32, 32);
     const material = new THREE.ShaderMaterial({
-        vertexShader,
-        fragmentShader,
-        uniforms: {
-            uTexture: { value: null },
-            uTime: { value: 0 },
-            uSpeed: { value: settings.liquidEffect.speed },
-            uDistortionStrength: { value: 0.0 }
-        },
-        transparent: true
+      vertexShader,
+      fragmentShader,
+      uniforms: {
+        uTexture: { value: null },
+        uTime: { value: 0 },
+        uSpeed: { value: settings.liquidEffect.speed },
+        uDistortionStrength: { value: 0.0 },
+      },
+      transparent: true,
     });
 
     const mesh = new THREE.Mesh(geometry, material) as SlideInterface;
     mesh.userData = {
-        originalVertices: Array.from(geometry.attributes.position.array),
-        targetX: index * (slideSize.width + gap),
-        currentX: index * (slideSize.width + gap),
-        index: index,
-        currentImageIndex: (index % imagesCount) + 1,
-        nextTexture: null,
-        isTransitioning: false,
-        transitionProgress: 0
+      originalVertices: Array.from(geometry.attributes.position.array),
+      targetX: index * (slideSize.width + gap),
+      currentX: index * (slideSize.width + gap),
+      index: index,
+      currentImageIndex: (index % imagesCount) + 1,
+      nextTexture: null,
+      isTransitioning: false,
+      transitionProgress: 0,
     };
 
     // 画像の読み込みを非同期で行う
     new THREE.TextureLoader().load(
-        `/img${(index % imagesCount) + 1}.jpg`,
-        (texture) => {
-            texture.colorSpace = THREE.LinearSRGBColorSpace;
-            material.uniforms.uTexture.value = texture;
-            material.needsUpdate = true;
+      `/img${(index % imagesCount) + 1}.jpg`,
+      texture => {
+        texture.colorSpace = THREE.LinearSRGBColorSpace;
+        material.uniforms.uTexture.value = texture;
+        material.needsUpdate = true;
 
-            // テクスチャのアスペクト比を調整
-            if (texture.image) {
-                const imgAspect = texture.image.width / texture.image.height;
-                const slideAspect = slideSize.width / slideSize.height;
+        // テクスチャのアスペクト比を調整
+        if (texture.image) {
+          const imgAspect = texture.image.width / texture.image.height;
+          const slideAspect = slideSize.width / slideSize.height;
 
-                // テクスチャの中心を基準に調整
-                texture.center.set(0.5, 0.5);
+          // テクスチャの中心を基準に調整
+          texture.center.set(0.5, 0.5);
 
-                if (imgAspect > slideAspect) {
-                    // 画像が横長の場合
-                    const scale = slideAspect / imgAspect;
-                    texture.repeat.set(1, scale);
-                    texture.offset.y = (1 - scale) / 2;
-                } else {
-                    // 画像が縦長の場合
-                    const scale = imgAspect / slideAspect;
-                    texture.repeat.set(scale, 1);
-                    texture.offset.x = (1 - scale) / 2;
-                }
+          if (imgAspect > slideAspect) {
+            // 画像が横長の場合
+            const scale = slideAspect / imgAspect;
+            texture.repeat.set(1, scale);
+            texture.offset.y = (1 - scale) / 2;
+          } else {
+            // 画像が縦長の場合
+            const scale = imgAspect / slideAspect;
+            texture.repeat.set(scale, 1);
+            texture.offset.x = (1 - scale) / 2;
+          }
 
-                // テクスチャのラップモードを設定
-                texture.wrapS = THREE.ClampToEdgeWrapping;
-                texture.wrapT = THREE.ClampToEdgeWrapping;
-            }
-        },
-        undefined,
-        (error) => console.warn('Error loading texture:', error)
+          // テクスチャのラップモードを設定
+          texture.wrapS = THREE.ClampToEdgeWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
+        }
+      },
+      undefined,
+      error => console.warn('Error loading texture:', error)
     );
 
     slides.push(mesh);
@@ -211,42 +232,42 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
   const updateSlidesSize = () => {
     const newSize = calculateSlideSize(camera);
     slides.forEach((slide, index) => {
-        const newGeometry = new THREE.PlaneGeometry(newSize.width, newSize.height, 32, 32);
-        slide.geometry.dispose();
-        slide.geometry = newGeometry;
-        slide.userData.originalVertices = Array.from(newGeometry.attributes.position.array);
+      const newGeometry = new THREE.PlaneGeometry(newSize.width, newSize.height, 32, 32);
+      slide.geometry.dispose();
+      slide.geometry = newGeometry;
+      slide.userData.originalVertices = Array.from(newGeometry.attributes.position.array);
 
-        const newTotalWidth = slideCount * newSize.width;
-        slide.position.x = index * newSize.width - newTotalWidth / 2 + currentPosition;
-        slide.userData.targetX = slide.position.x - currentPosition;
-        slide.userData.currentX = slide.position.x;
+      const newTotalWidth = slideCount * newSize.width;
+      slide.position.x = index * newSize.width - newTotalWidth / 2 + currentPosition;
+      slide.userData.targetX = slide.position.x - currentPosition;
+      slide.userData.currentX = slide.position.x;
 
-        const material = slide.material as THREE.ShaderMaterial;
-        const texture = material.uniforms.uTexture.value as THREE.Texture;
+      const material = slide.material as THREE.ShaderMaterial;
+      const texture = material.uniforms.uTexture.value as THREE.Texture;
 
-        if (texture && texture.image) {
-            const imgAspect = texture.image.width / texture.image.height;
-            const slideAspect = newSize.width / newSize.height;
+      if (texture && texture.image) {
+        const imgAspect = texture.image.width / texture.image.height;
+        const slideAspect = newSize.width / newSize.height;
 
-            // テクスチャの中心を基準に調整
-            texture.center.set(0.5, 0.5);
+        // テクスチャの中心を基準に調整
+        texture.center.set(0.5, 0.5);
 
-            if (imgAspect > slideAspect) {
-                // 画像が横長の場合
-                const scale = slideAspect / imgAspect;
-                texture.repeat.set(1, scale);
-                texture.offset.y = (1 - scale) / 2;
-            } else {
-                // 画像が縦長の場合
-                const scale = imgAspect / slideAspect;
-                texture.repeat.set(scale, 1);
-                texture.offset.x = (1 - scale) / 2;
-            }
-
-            // テクスチャのラップモードを設定
-            texture.wrapS = THREE.ClampToEdgeWrapping;
-            texture.wrapT = THREE.ClampToEdgeWrapping;
+        if (imgAspect > slideAspect) {
+          // 画像が横長の場合
+          const scale = slideAspect / imgAspect;
+          texture.repeat.set(1, scale);
+          texture.offset.y = (1 - scale) / 2;
+        } else {
+          // 画像が縦長の場合
+          const scale = imgAspect / slideAspect;
+          texture.repeat.set(scale, 1);
+          texture.offset.x = (1 - scale) / 2;
         }
+
+        // テクスチャのラップモードを設定
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+      }
     });
   };
 
@@ -500,7 +521,7 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
     const originalVertices = mesh.userData.originalVertices;
 
     for (let i = 0; i < positionAttribute.count; i++) {
-        positionAttribute.setZ(i, 0);
+      positionAttribute.setZ(i, 0);
     }
 
     positionAttribute.needsUpdate = true;
@@ -516,22 +537,54 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
   window.addEventListener('keydown', e => {
     if (e.key === 'ArrowLeft') {
       targetPosition += slideUnit;
-      // キー操作時のliquidエフェクト（感度2倍）
-      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 1.6); // 0.8から1.6に増加
+      // キー操作時のliquidエフェクト
+      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 1.6);
+      // フィルターエフェクトも適用
+      targetOpacity = 1.0;
     } else if (e.key === 'ArrowRight') {
       targetPosition -= slideUnit;
-      // キー操作時のliquidエフェクト（感度2倍）
-      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 1.6); // 0.8から1.6に増加
+      // キー操作時のliquidエフェクト
+      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 1.6);
+      // フィルターエフェクトも適用
+      targetOpacity = 1.0;
     }
   });
+
+  const imgFilter = document.querySelector('.img__filter') as HTMLDivElement;
+  let targetOpacity = 0;
+  let currentOpacity = 0;
+
+  // フィルターの初期表示を遅延
+  setTimeout(() => {
+    if (imgFilter) {
+      imgFilter.classList.add('visible');
+    }
+  }, 2000);
+
+  const updateFilter = () => {
+    if (imgFilter) {
+      currentOpacity = THREE.MathUtils.lerp(currentOpacity, targetOpacity, 0.03);
+      imgFilter.style.opacity = currentOpacity.toString();
+      targetOpacity *= 0.85;
+      requestAnimationFrame(updateFilter);
+    }
+  };
+  // フィルターのアニメーション開始も遅延
+  setTimeout(() => {
+    updateFilter();
+  }, 2000);
 
   window.addEventListener(
     'wheel',
     e => {
       e.preventDefault();
-      // ホイールの強さに応じてliquidエフェクトを適用（感度2倍）
-      const wheelStrength = Math.abs(e.deltaY) * 1.1; // 0.008から0.016に増加
+      // ホイールの強さに応じてliquidエフェクトを適用
+      const wheelStrength = Math.abs(e.deltaY) * 1.1;
       targetDistortionFactor = Math.min(1.0, targetDistortionFactor + wheelStrength);
+
+      // img__filterのopacityを更新
+      const maxDelta = 1;
+      targetOpacity = Math.min(Math.abs(e.deltaY) / maxDelta, 1); // 最大不透明度を1.0に変更
 
       targetPosition -= e.deltaY * settings.wheelSensitivity;
       isScrolling = true;
@@ -545,7 +598,7 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
       window.scrollTimeout = setTimeout(() => {
         isScrolling = false;
         endUserInteraction();
-      }, 5500);
+      }, 150);
     },
     { passive: false }
   );
@@ -569,10 +622,13 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
       const deltaY = touchY - touchLastX;
       touchLastX = touchY;
 
-      // タッチの強さに応じてliquidエフェクトを適用（感度2倍）
-      const touchStrength = Math.abs(deltaY) * 1.1; // 0.12から0.24に増加
-      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + touchStrength);
+      // タッチの強さに応じてフィルター効果を適用
+      const maxDelta = 1;
+      targetOpacity = Math.min(Math.abs(deltaY) / maxDelta, 1.0); // 最大不透明度を1.0に変更
 
+      // 既存のコード
+      const touchStrength = Math.abs(deltaY) * 1.1;
+      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + touchStrength);
       targetPosition += deltaY * settings.touchSensitivity;
       isScrolling = true;
     },
@@ -583,8 +639,10 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
     const velocity = (touchLastX - touchStartX) * 0.005;
     if (Math.abs(velocity) > 0.3) {
       autoScrollSpeed = velocity * settings.momentumMultiplier * 0.05;
-      // 慣性スクロール時のliquidエフェクト（感度2倍）
-      targetDistortionFactor = Math.min(1.0, Math.abs(velocity) * 5.0 * settings.distortionSensitivity); // 2.5から5.0に増加
+      targetDistortionFactor = Math.min(
+        1.0,
+        Math.abs(velocity) * 5.0 * settings.distortionSensitivity
+      );
       isScrolling = true;
       setTimeout(() => {
         isScrolling = false;
