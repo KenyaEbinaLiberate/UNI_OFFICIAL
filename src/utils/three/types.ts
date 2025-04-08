@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 
-export interface SlideInterface extends THREE.Mesh {
-  material: THREE.ShaderMaterial;
+export interface SlideInterface extends THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial> {
   userData: {
     originalVertices: number[];
     targetX: number;

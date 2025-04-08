@@ -1,6 +1,7 @@
 ---
 import { settings, calculateSlideSize } from '../utils/three/config';
 import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
+import { vertexShader, fragmentShader } from '../utils/three/shaders';
 ---
 
 <canvas id="canvas"></canvas>
@@ -50,6 +51,7 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
   import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
   import { GlitchPass } from 'three/examples/jsm/postprocessing/GlitchPass.js';
   import { settings, calculateSlideSize } from '../utils/three/config';
+  import { vertexShader, fragmentShader } from '../utils/three/shaders';
   import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
 
   declare const window: ExtendedWindow;
@@ -74,7 +76,7 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
   renderer.toneMapping = THREE.NoToneMapping;
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xe3e3db);
+  scene.background = new THREE.Color(0x0000ff);
 
   // カメラの初期化を先に行う
   const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
@@ -138,95 +140,95 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
     return texture;
   };
 
-  const createSlide = (index: number): void => {
-    const geometry = new THREE.PlaneGeometry(slideSize.width, slideSize.height, 32, 16);
-    const material = new THREE.MeshBasicMaterial();
+  const createSlide = (index: number) => {
+    const geometry = new THREE.PlaneGeometry(slideSize.width, slideSize.height, 32, 32);
+    const material = new THREE.ShaderMaterial({
+        vertexShader,
+        fragmentShader,
+        uniforms: {
+            uTexture: { value: null },
+            uTime: { value: 0 },
+            uSpeed: { value: settings.liquidEffect.speed },
+            uDistortionStrength: { value: 0.0 }
+        },
+        transparent: true
+    });
 
-    const mesh = new THREE.Mesh(geometry, material);
-    const slideMesh = mesh as unknown as SlideInterface;
-    slideMesh.userData = {
-      originalVertices: [...geometry.attributes.position.array],
-      targetX: 0,
-      currentX: 0,
-      index,
-      currentImageIndex: 0,
-      nextTexture: null,
-      isTransitioning: false,
-      transitionProgress: 0
+    const mesh = new THREE.Mesh(geometry, material) as SlideInterface;
+    mesh.userData = {
+        originalVertices: Array.from(geometry.attributes.position.array),
+        targetX: index * (slideSize.width + gap),
+        currentX: index * (slideSize.width + gap),
+        index: index,
+        currentImageIndex: (index % imagesCount) + 1,
+        nextTexture: null,
+        isTransitioning: false,
+        transitionProgress: 0
     };
-    slideMesh.position.x = index * (slideSize.width + slideSize.gap);
 
-    slideMesh.position.x -= totalWidth / 2;
-    slideMesh.userData.targetX = slideMesh.position.x;
-    slideMesh.userData.currentX = slideMesh.position.x;
-
-    const imageNumber = (index % imagesCount) + 1;
-    const imagePath = `/img${imageNumber}.jpg`;
-    loadImage(slideMesh, imagePath);
-
-    scene.add(slideMesh);
-    slides.push(slideMesh);
-  };
-
-  // 画像読み込み関数を更新
-  const loadImage = (mesh: SlideInterface, imagePath: string) => {
+    // 画像の読み込みを非同期で行う
     new THREE.TextureLoader().load(
-      imagePath,
-      texture => {
-        correctImageColor(texture);
-        const material = (mesh.material as unknown) as THREE.MeshBasicMaterial;
-        material.map = texture;
-        material.needsUpdate = true;
+        `/img${(index % imagesCount) + 1}.jpg`,
+        (texture) => {
+            texture.colorSpace = THREE.LinearSRGBColorSpace;
+            material.uniforms.uTexture.value = texture;
+            material.needsUpdate = true;
 
-        const imgAspect = texture.image.width / texture.image.height;
-        const slideAspect = slideSize.width / slideSize.height;
+            // テクスチャのアスペクト比を調整
+            if (texture.image) {
+                const imgAspect = texture.image.width / texture.image.height;
+                const slideAspect = slideSize.width / slideSize.height;
 
-        texture.repeat.set(1, 1);
-        texture.offset.set(0, 0);
-
-        if (imgAspect > slideAspect) {
-          texture.repeat.set(1, 1);
-          texture.offset.y = (1 - slideAspect / imgAspect) / 2;
-        } else {
-          texture.repeat.set(1, 1);
-          texture.offset.x = (1 - imgAspect / slideAspect) / 2;
-        }
-      },
-      undefined,
-      err => console.warn(`Couldn't load image ${imagePath}`, err)
+                if (imgAspect > slideAspect) {
+                    const scale = slideAspect / imgAspect;
+                    texture.repeat.set(1, scale);
+                    texture.offset.y = (1 - scale) / 2;
+                } else {
+                    const scale = imgAspect / slideAspect;
+                    texture.repeat.set(scale, 1);
+                    texture.offset.x = (1 - scale) / 2;
+                }
+            }
+        },
+        undefined,
+        (error) => console.warn('Error loading texture:', error)
     );
+
+    slides.push(mesh);
+    scene.add(mesh);
   };
 
-  // スライドのサイズを更新する関数
+  // スライドのサイズを更新する関数を修正
   const updateSlidesSize = () => {
     const newSize = calculateSlideSize(camera);
     slides.forEach((slide, index) => {
-      const newGeometry = new THREE.PlaneGeometry(newSize.width, newSize.height, 32, 16);
-      slide.geometry.dispose();
-      slide.geometry = newGeometry;
-      slide.userData.originalVertices = [...newGeometry.attributes.position.array];
+        const newGeometry = new THREE.PlaneGeometry(newSize.width, newSize.height, 32, 32);
+        slide.geometry.dispose();
+        slide.geometry = newGeometry;
+        slide.userData.originalVertices = Array.from(newGeometry.attributes.position.array);
 
-      const newTotalWidth = slideCount * newSize.width;
-      slide.position.x = index * newSize.width - newTotalWidth / 2 + currentPosition;
-      slide.userData.targetX = slide.position.x - currentPosition;
-      slide.userData.currentX = slide.position.x;
+        const newTotalWidth = slideCount * newSize.width;
+        slide.position.x = index * newSize.width - newTotalWidth / 2 + currentPosition;
+        slide.userData.targetX = slide.position.x - currentPosition;
+        slide.userData.currentX = slide.position.x;
 
-      const material = (slide.material as unknown) as THREE.MeshBasicMaterial;
-      if (material.map) {
-        const texture = material.map;
-        const imgAspect = texture.image.width / texture.image.height;
-        const slideAspect = newSize.width / newSize.height;
+        const material = slide.material as THREE.ShaderMaterial;
+        const texture = material.uniforms.uTexture.value as THREE.Texture;
 
-        if (imgAspect > slideAspect) {
-          const scale = slideAspect / imgAspect;
-          texture.repeat.set(1, scale);
-          texture.offset.y = (1 - scale) / 2;
-        } else {
-          const scale = imgAspect / slideAspect;
-          texture.repeat.set(scale, 1);
-          texture.offset.x = (1 - scale) / 2;
+        if (texture && texture.image) {
+            const imgAspect = texture.image.width / texture.image.height;
+            const slideAspect = newSize.width / newSize.height;
+
+            if (imgAspect > slideAspect) {
+                const scale = slideAspect / imgAspect;
+                texture.repeat.set(1, scale);
+                texture.offset.y = (1 - scale) / 2;
+            } else {
+                const scale = imgAspect / slideAspect;
+                texture.repeat.set(scale, 1);
+                texture.offset.x = (1 - scale) / 2;
+            }
         }
-      }
     });
   };
 
@@ -381,6 +383,13 @@ import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
     }
 
     updateCenterImageIndex();
+
+    // 歪みの更新
+    slides.forEach(slide => {
+      const material = slide.material as THREE.ShaderMaterial;
+      material.uniforms.uTime.value = time * 0.001;
+      material.uniforms.uDistortionStrength.value = currentDistortionFactor;
+    });
 
     composer.render();
   };

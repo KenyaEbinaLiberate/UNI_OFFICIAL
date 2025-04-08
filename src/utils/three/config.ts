@@ -12,6 +12,12 @@ export const settings = {
   distortionSmoothing: 0.05,
   autoScrollSpeed: 0.001,
   userInteractionTimeout: 500,
+  liquidEffect: {
+    speed: 0.5,
+    strength: 1.0,
+    frequency: 2.0,
+    amplitude: 0.1
+  }
 };
 
 export const calculateSlideSize = (camera: THREE.PerspectiveCamera) => {
