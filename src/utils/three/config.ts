@@ -3,20 +3,20 @@ import * as THREE from 'three';
 export const settings = {
   wheelSensitivity: 0.01,
   touchSensitivity: 0.015,
-  momentumMultiplier: 1.5,
-  smoothing: 0.15,
-  slideLerp: 0.075,
-  distortionDecay: 0.98,
-  maxDistortion: 32.0,
-  distortionSensitivity: 1.6,
-  distortionSmoothing: 0.05,
+  momentumMultiplier: 2.5,
+  smoothing: 0.25,
+  slideLerp: 0.045,
+  distortionDecay: 0.985,
+  maxDistortion: 64.0,
+  distortionSensitivity: 2.6,
+  distortionSmoothing: 0.5,
   autoScrollSpeed: 0.001,
-  userInteractionTimeout: 500,
+  userInteractionTimeout: 1200,
   liquidEffect: {
-    speed: 0.4,
-    strength: 32.0,
-    frequency: 2.0,
-    amplitude: 320
+    speed: 0.35,
+    strength: 99.0,
+    frequency: 256.8,
+    amplitude: 800
   }
 };
 

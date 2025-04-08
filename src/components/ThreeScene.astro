@@ -530,7 +530,7 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
     e => {
       e.preventDefault();
       // ホイールの強さに応じてliquidエフェクトを適用（感度2倍）
-      const wheelStrength = Math.abs(e.deltaY) * 0.016; // 0.008から0.016に増加
+      const wheelStrength = Math.abs(e.deltaY) * 1.1; // 0.008から0.016に増加
       targetDistortionFactor = Math.min(1.0, targetDistortionFactor + wheelStrength);
 
       targetPosition -= e.deltaY * settings.wheelSensitivity;
@@ -545,7 +545,7 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
       window.scrollTimeout = setTimeout(() => {
         isScrolling = false;
         endUserInteraction();
-      }, 3500);
+      }, 5500);
     },
     { passive: false }
   );
@@ -570,7 +570,7 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
       touchLastX = touchY;
 
       // タッチの強さに応じてliquidエフェクトを適用（感度2倍）
-      const touchStrength = Math.abs(deltaY) * 0.24; // 0.12から0.24に増加
+      const touchStrength = Math.abs(deltaY) * 1.1; // 0.12から0.24に増加
       targetDistortionFactor = Math.min(1.0, targetDistortionFactor + touchStrength);
 
       targetPosition += deltaY * settings.touchSensitivity;
