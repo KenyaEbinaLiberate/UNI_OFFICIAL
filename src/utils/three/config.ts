@@ -20,20 +20,13 @@ export const settings = {
 } as const;
 
 export const calculateSlideSize = (camera: THREE.PerspectiveCamera) => {
-  const isPc = window.innerWidth >= 768;
   const viewportHeight = 2 * Math.tan((camera.fov * Math.PI) / 180 / 2) * camera.position.z;
-  let viewportWidth;
-  const gap = isPc ? 0 : 0;
-
-  if (isPc) {
-    viewportWidth = (viewportHeight * 9) / 16;
-  } else {
-    viewportWidth = viewportHeight * (window.innerWidth / window.innerHeight);
-  }
+  // 常に9:16のアスペクト比を維持
+  const viewportWidth = (viewportHeight * 9) / 16;
 
   return {
     width: viewportWidth,
     height: viewportHeight,
-    gap: gap,
+    gap: 0,
   };
 };

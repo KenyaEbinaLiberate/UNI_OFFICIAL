@@ -16,9 +16,8 @@ import { animationTimings } from '../utils/animation-config';
   .canvas-layer {
     position: fixed;
     top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100%;
+    left: 0;
+    width: 100vw;
     height: 100dvh;
     opacity: 0;
     visibility: hidden;
@@ -35,9 +34,8 @@ import { animationTimings } from '../utils/animation-config';
 
   @media (min-width: 768px) {
     .canvas-layer {
-      width: auto;
-      height: 100vh;
-      aspect-ratio: 9/16;
+      width: 100vw;
+      height: 100dvh;
     }
   }
 
@@ -185,10 +183,21 @@ import { animationTimings } from '../utils/animation-config';
   // レスポンシブ対応の関数
   const updateRendererSize = () => {
     Object.values(renderers).forEach(renderer => {
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      const canvas = renderer.domElement;
+      const computedStyle = window.getComputedStyle(canvas);
+      const width = parseInt(computedStyle.width);
+      const height = parseInt(computedStyle.height);
+
+      renderer.setSize(width, height, false);
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     });
-    camera.aspect = window.innerWidth / window.innerHeight;
+
+    // カメラのアスペクト比を画面サイズに合わせる
+    const canvas = canvases.canvas1;
+    const computedStyle = window.getComputedStyle(canvas);
+    const width = parseInt(computedStyle.width);
+    const height = parseInt(computedStyle.height);
+    camera.aspect = width / height;
     camera.updateProjectionMatrix();
   };
 
@@ -298,17 +307,23 @@ import { animationTimings } from '../utils/animation-config';
         if (texture.image) {
           const imgAspect = texture.image.width / texture.image.height;
           const slideAspect = slideSize.width / slideSize.height;
+          const viewportAspect = window.innerWidth / window.innerHeight;
 
           texture.center.set(0.5, 0.5);
 
-          if (imgAspect > slideAspect) {
-            const scale = slideAspect / imgAspect;
-            texture.repeat.set(1, scale);
-            texture.offset.y = (1 - scale) / 2;
-          } else {
-            const scale = imgAspect / slideAspect;
+          // object-fit: coverのような動作を実現
+          if (imgAspect > viewportAspect) {
+            // 画像が画面より横長の場合、高さに合わせてスケーリング
+            const scale = viewportAspect / imgAspect;
             texture.repeat.set(scale, 1);
             texture.offset.x = (1 - scale) / 2;
+            texture.offset.y = 0;
+          } else {
+            // 画像が画面より縦長の場合、幅に合わせてスケーリング
+            const scale = imgAspect / viewportAspect;
+            texture.repeat.set(1, scale);
+            texture.offset.y = (1 - scale) / 2;
+            texture.offset.x = 0;
           }
 
           texture.wrapS = THREE.ClampToEdgeWrapping;
@@ -460,17 +475,23 @@ import { animationTimings } from '../utils/animation-config';
         if (texture && texture.image) {
           const imgAspect = texture.image.width / texture.image.height;
           const slideAspect = newSize.width / newSize.height;
+          const viewportAspect = window.innerWidth / window.innerHeight;
 
           texture.center.set(0.5, 0.5);
 
-          if (imgAspect > slideAspect) {
-            const scale = slideAspect / imgAspect;
-            texture.repeat.set(1, scale);
-            texture.offset.y = (1 - scale) / 2;
-          } else {
-            const scale = imgAspect / slideAspect;
+          // object-fit: coverのような動作を実現
+          if (imgAspect > viewportAspect) {
+            // 画像が画面より横長の場合、高さに合わせてスケーリング
+            const scale = viewportAspect / imgAspect;
             texture.repeat.set(scale, 1);
             texture.offset.x = (1 - scale) / 2;
+            texture.offset.y = 0;
+          } else {
+            // 画像が画面より縦長の場合、幅に合わせてスケーリング
+            const scale = imgAspect / viewportAspect;
+            texture.repeat.set(1, scale);
+            texture.offset.y = (1 - scale) / 2;
+            texture.offset.x = 0;
           }
 
           texture.wrapS = THREE.ClampToEdgeWrapping;
