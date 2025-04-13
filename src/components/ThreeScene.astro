@@ -169,6 +169,21 @@ import { animationTimings } from '../utils/animation-config';
   setTimeout(() => {
     canvases.canvas1.classList.add('visible');
     document.querySelector('.img__name')?.classList.add('visible');
+
+    // 初期スライドインアニメーション
+    targetPosition = -slideUnit * 6; // 半スライド分移動
+    targetDistortionFactor = 1; // 適度な歪み効果
+    const filter = document.querySelector('.img__filter') as HTMLElement;
+    if (filter) {
+      filter.classList.add('visible');
+      filter.style.opacity = '0.5';
+      setTimeout(() => {
+        filter.style.opacity = '0';
+        setTimeout(() => {
+          filter.classList.remove('visible');
+        }, 200);
+      }, 1000);
+    }
   }, animationTimings.threeScene.canvasFadeIn);
 
   let slideSize = calculateSlideSize(camera);
