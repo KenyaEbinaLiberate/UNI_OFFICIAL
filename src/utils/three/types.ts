@@ -10,6 +10,9 @@ export interface SlideInterface extends THREE.Mesh<THREE.PlaneGeometry, THREE.Sh
     nextTexture: THREE.Texture | null;
     isTransitioning: boolean;
     transitionProgress: number;
+    targetPosition: number;
+    currentPosition: number;
+    visible?: boolean;
   };
 }
 

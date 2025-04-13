@@ -96,17 +96,112 @@
 
 // アニメーション要素用のミックスイン
 @mixin optimize-animation {
-  will-change: transform, opacity;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
-  transform: translateZ(0); // GPUアクセラレーション
-  contain: paint layout; // レイアウトの再計算を制限
+  perspective: 1000;
+  transform-style: preserve-3d;
 }
 
 // アニメーション要素のコンテナ用ミックスイン
 @mixin optimize-container {
-  contain: content;
+  contain: layout style paint;
   position: relative;
   z-index: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+// アニメーション要素の基本クラス
+.animated-element {
+  @include optimize-animation;
+}
+
+// アニメーションコンテナの基本クラス
+.animation-container {
+  @include optimize-container;
+}
+
+// スクロールアニメーション用のクラス
+.scroll-animated {
+  opacity: 0;
+  transform: translate3d(0, 20px, 0);
+  transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  &.visible {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+// フェードインアニメーション
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+// 回転アニメーション
+@keyframes rotate3d {
+  0% {
+    transform: rotate3d(0, 1, 0, 0deg);
+  }
+  100% {
+    transform: rotate3d(0, 1, 0, 360deg);
+  }
+}
+
+// スケールアニメーション
+@keyframes scale3d {
+  0% {
+    transform: scale3d(0.95, 0.95, 1);
+  }
+  100% {
+    transform: scale3d(1, 1, 1);
+  }
+}
+
+// Virtual Scrollingのコンテナ
+.virtual-scroll-container {
+  @include optimize-container;
+  height: 100vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.virtual-scroll-item {
+  @include optimize-animation;
+  position: absolute;
+  width: 100%;
+  transform: translate3d(0, var(--virtual-scroll-offset), 0);
+}
+
+// デバウンス/スロットリング用のユーティリティクラス
+.debounced-animation {
+  animation-play-state: paused;
+
+  &.running {
+    animation-play-state: running;
+  }
+}
+
+// Intersection Observer用のユーティリティクラス
+.observe-visibility {
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    visibility 0s linear 0.3s,
+    opacity 0.3s ease-out;
+
+  &.visible {
+    visibility: visible;
+    opacity: 1;
+    transition-delay: 0s;
+  }
 }
 
 .animated-text span {
