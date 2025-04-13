@@ -2,6 +2,7 @@
 import { settings, calculateSlideSize } from '../utils/three/config';
 import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
 import { vertexShader, fragmentShader } from '../utils/three/shaders';
+import { animationTimings } from '../utils/animation-config';
 ---
 
 <canvas id="canvas"></canvas>
@@ -74,6 +75,7 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
   import { settings, calculateSlideSize } from '../utils/three/config';
   import { vertexShader, fragmentShader } from '../utils/three/shaders';
   import type { SlideInterface, ExtendedWindow } from '../utils/three/types';
+  import { animationTimings } from '../utils/animation-config';
 
   declare const window: ExtendedWindow;
 
@@ -129,7 +131,7 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
       canvas.classList.add('visible');
       imgNameElement?.classList.add('visible');
     }
-  }, 2800); // フェードイン開始までの遅延時間（2.8秒）
+  }, animationTimings.threeScene.canvasFadeIn);
 
   let slideSize = calculateSlideSize(camera);
   const gap = 0; // ギャップを0に設定
@@ -278,13 +280,13 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
 
   // 3. 初期スライドアニメーションの設定
   const initialAnimation = {
-    startDelay: 2500,
-    duration: 2000,
+    startDelay: animationTimings.threeScene.initialAnimation.startDelay,
+    duration: animationTimings.threeScene.initialAnimation.duration,
     targetScroll: -slideUnit * 3,
     started: false,
     startTime: 0,
-    autoScrollDelay: 500,
-    autoScrollDuration: 1000,
+    autoScrollDelay: animationTimings.threeScene.initialAnimation.autoScrollDelay,
+    autoScrollDuration: animationTimings.threeScene.initialAnimation.autoScrollDuration,
   };
 
   // 初期アニメーション後に自動スクロールを開始するための変数
@@ -606,7 +608,7 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
   window.addEventListener(
     'touchstart',
     e => {
-      touchStartX = e.touches[0].clientY;
+      touchStartX = e.touches[0].clientX;
       touchLastX = touchStartX;
       isScrolling = false;
       startUserInteraction();
@@ -618,30 +620,30 @@ import { vertexShader, fragmentShader } from '../utils/three/shaders';
     'touchmove',
     e => {
       e.preventDefault();
-      const touchY = e.touches[0].clientY;
-      const deltaY = touchY - touchLastX;
-      touchLastX = touchY;
+      const touchX = e.touches[0].clientX;
+      const deltaX = touchX - touchLastX;
+      touchLastX = touchX;
 
       // タッチの強さに応じてフィルター効果を適用
       const maxDelta = 1;
-      targetOpacity = Math.min(Math.abs(deltaY) / maxDelta, 1.0); // 最大不透明度を1.0に変更
+      targetOpacity = Math.min(Math.abs(deltaX) / maxDelta, 1.0);
 
       // 既存のコード
-      const touchStrength = Math.abs(deltaY) * 1.1;
+      const touchStrength = Math.abs(deltaX) * 2; // 1.1から2.75に増加（2.5倍）
       targetDistortionFactor = Math.min(1.0, targetDistortionFactor + touchStrength);
-      targetPosition += deltaY * settings.touchSensitivity;
+      targetPosition -= deltaX * settings.touchSensitivity * 2.5; // 2.5倍に増加
       isScrolling = true;
     },
     { passive: false }
   );
 
   window.addEventListener('touchend', () => {
-    const velocity = (touchLastX - touchStartX) * 0.005;
+    const velocity = (touchLastX - touchStartX) * 0.0125; // 0.005から0.0125に増加（2.5倍）
     if (Math.abs(velocity) > 0.3) {
-      autoScrollSpeed = velocity * settings.momentumMultiplier * 0.05;
+      autoScrollSpeed = -velocity * settings.momentumMultiplier * 0.125; // 0.05から0.125に増加（2.5倍）
       targetDistortionFactor = Math.min(
         1.0,
-        Math.abs(velocity) * 5.0 * settings.distortionSensitivity
+        Math.abs(velocity) * 12.5 * settings.distortionSensitivity // 5.0から12.5に増加（2.5倍）
       );
       isScrolling = true;
       setTimeout(() => {
