@@ -269,6 +269,57 @@ import { animationTimings } from '../utils/animation-config';
     return texture;
   };
 
+  // 画像の読み込み
+  const loadTexture = (index: number, material: THREE.ShaderMaterial) => {
+    // 低解像度版を先に読み込む
+    new THREE.TextureLoader().load(
+      `/img${index}-low.webp`,
+      lowResTexture => {
+        lowResTexture.colorSpace = THREE.LinearSRGBColorSpace;
+        material.uniforms.uTexture.value = lowResTexture;
+        material.needsUpdate = true;
+
+        // 高解像度版を後から読み込む
+        new THREE.TextureLoader().load(
+          `/img${index}.webp`,
+          highResTexture => {
+            highResTexture.colorSpace = THREE.LinearSRGBColorSpace;
+            material.uniforms.uTexture.value = highResTexture;
+            material.needsUpdate = true;
+
+            if (highResTexture.image) {
+              const imgAspect = highResTexture.image.width / highResTexture.image.height;
+              const slideAspect = slideSize.width / slideSize.height;
+              const viewportAspect = window.innerWidth / window.innerHeight;
+
+              highResTexture.center.set(0.5, 0.5);
+
+              // object-fit: coverのような動作を実現
+              if (imgAspect > viewportAspect) {
+                const scale = viewportAspect / imgAspect;
+                highResTexture.repeat.set(scale, 1);
+                highResTexture.offset.x = (1 - scale) / 2;
+                highResTexture.offset.y = 0;
+              } else {
+                const scale = imgAspect / viewportAspect;
+                highResTexture.repeat.set(1, scale);
+                highResTexture.offset.y = (1 - scale) / 2;
+                highResTexture.offset.x = 0;
+              }
+
+              highResTexture.wrapS = THREE.ClampToEdgeWrapping;
+              highResTexture.wrapT = THREE.ClampToEdgeWrapping;
+            }
+          },
+          undefined,
+          error => console.warn('Error loading high-res texture:', error)
+        );
+      },
+      undefined,
+      error => console.warn('Error loading low-res texture:', error)
+    );
+  };
+
   // スライド作成関数を更新
   const createSlide = (index: number, groupIndex: number) => {
     const geometry = new THREE.PlaneGeometry(slideSize.width, slideSize.height, 32, 32);
@@ -290,49 +341,17 @@ import { animationTimings } from '../utils/animation-config';
       targetX: index * (slideSize.width + gap),
       currentX: index * (slideSize.width + gap),
       index: index,
-      currentImageIndex: index + 1 + (groupIndex - 1) * 8, // グループごとに画像インデックスを調整
+      currentImageIndex: index + 1 + (groupIndex - 1) * 8,
       nextTexture: null,
       isTransitioning: false,
       transitionProgress: 0,
+      targetPosition: 0,
+      currentPosition: 0,
+      visible: true,
     };
 
-    // 画像の読み込み
-    new THREE.TextureLoader().load(
-      `/img${mesh.userData.currentImageIndex}.jpg`,
-      texture => {
-        texture.colorSpace = THREE.LinearSRGBColorSpace;
-        material.uniforms.uTexture.value = texture;
-        material.needsUpdate = true;
-
-        if (texture.image) {
-          const imgAspect = texture.image.width / texture.image.height;
-          const slideAspect = slideSize.width / slideSize.height;
-          const viewportAspect = window.innerWidth / window.innerHeight;
-
-          texture.center.set(0.5, 0.5);
-
-          // object-fit: coverのような動作を実現
-          if (imgAspect > viewportAspect) {
-            // 画像が画面より横長の場合、高さに合わせてスケーリング
-            const scale = viewportAspect / imgAspect;
-            texture.repeat.set(scale, 1);
-            texture.offset.x = (1 - scale) / 2;
-            texture.offset.y = 0;
-          } else {
-            // 画像が画面より縦長の場合、幅に合わせてスケーリング
-            const scale = imgAspect / viewportAspect;
-            texture.repeat.set(1, scale);
-            texture.offset.y = (1 - scale) / 2;
-            texture.offset.x = 0;
-          }
-
-          texture.wrapS = THREE.ClampToEdgeWrapping;
-          texture.wrapT = THREE.ClampToEdgeWrapping;
-        }
-      },
-      undefined,
-      error => console.warn('Error loading texture:', error)
-    );
+    // 新しい画像読み込み関数を使用
+    loadTexture(mesh.userData.currentImageIndex, material);
 
     // グループに応じてスライドを追加
     const targetSlides = slidesGroups[`slides${groupIndex}` as keyof typeof slidesGroups];
