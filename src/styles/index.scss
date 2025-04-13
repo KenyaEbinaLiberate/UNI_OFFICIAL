@@ -72,7 +72,6 @@ $splashDelay: 3.2s;
     clip-path: inset(0 0 0 0);
     transition: 0.5s ease-in-out 2.4s;
     @include smp {
-      width: 80px;
     }
   }
 
@@ -254,7 +253,7 @@ $splashDelay: 3.2s;
 
         @for $i from 1 through 33 {
           &:nth-of-type(#{$i}) {
-            animation-delay: #{4.5 + ($i * 0.1)}s;
+            animation-delay: #{6.3 + ($i * 0.1)}s;
           }
         }
         @media (min-width: 768px) {

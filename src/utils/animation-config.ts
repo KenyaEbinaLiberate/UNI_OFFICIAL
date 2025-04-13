@@ -7,7 +7,7 @@ export const animationTimings = {
   threeScene: {
     canvasFadeIn: 5000, // キャンバスのフェードイン開始
     initialAnimation: {
-      startDelay: 4500, // 初期アニメーション開始
+      startDelay: 6500, // 初期アニメーション開始
       duration: 2000, // アニメーション継続時間
       autoScrollDelay: 0, // 自動スクロール開始までの遅延
       autoScrollDuration: 2000, // 自動スクロールの継続時間

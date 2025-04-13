@@ -10,6 +10,7 @@ import { animationTimings } from '../utils/animation-config';
 <canvas id="canvas3" class="canvas-layer"></canvas>
 <div class="img__name"></div>
 <div class="img__filter"></div>
+<div class="canvas__mask"></div>
 
 <style>
   .canvas-layer {
@@ -24,6 +25,7 @@ import { animationTimings } from '../utils/animation-config';
     transition:
       opacity 1.5s ease-out,
       visibility 0s linear 0s;
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
   }
 
   .canvas-layer.visible {
@@ -36,6 +38,42 @@ import { animationTimings } from '../utils/animation-config';
       width: auto;
       height: 100vh;
       aspect-ratio: 9/16;
+    }
+  }
+
+  .canvas__mask {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    background: #eee;
+
+    clip-path: inset(0 100% 0 0);
+    transform-origin: left;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .canvas__mask.active {
+    animation: maskAnimation 0.7s cubic-bezier(0.7, 0, 0.3, 1) forwards;
+  }
+
+  @media (max-width: 767px) {
+    .canvas__mask.active {
+      animation-duration: 0.35s;
+    }
+  }
+
+  @keyframes maskAnimation {
+    0% {
+      clip-path: inset(0 100% 0 0);
+    }
+    50% {
+      clip-path: inset(0 0% 0 0);
+    }
+    100% {
+      clip-path: inset(0 0 0 100%);
     }
   }
 
@@ -300,22 +338,33 @@ import { animationTimings } from '../utils/animation-config';
     const currentCanvas = canvases[`canvas${currentCanvasIndex}` as keyof typeof canvases];
     const nextCanvasIndex = (currentCanvasIndex % 3) + 1;
     const nextCanvas = canvases[`canvas${nextCanvasIndex}` as keyof typeof canvases];
+    const mask = document.querySelector('.canvas__mask') as HTMLElement;
 
-    currentCanvas.style.opacity = '0';
+    // マスクアニメーションを開始
+    mask.classList.add('active');
+
+    // アニメーション時間を画面サイズに応じて設定
+    const duration = window.innerWidth >= 768 ? 700 : 350;
+    const halfDuration = duration / 2;
+
+    // マスクアニメーションの途中でキャンバスを切り替え
     setTimeout(() => {
+      currentCanvas.style.opacity = '0';
       currentCanvas.style.visibility = 'hidden';
-    }, 1500);
-
-    nextCanvas.style.visibility = 'visible';
-    setTimeout(() => {
+      nextCanvas.style.visibility = 'visible';
       nextCanvas.style.opacity = '1';
-    }, 100);
+    }, halfDuration);
+
+    // マスクアニメーション終了時にクラスを削除
+    setTimeout(() => {
+      mask.classList.remove('active');
+    }, duration);
 
     currentCanvasIndex = nextCanvasIndex;
   };
 
-  // 5秒ごとにキャンバスを切り替え
-  setInterval(switchCanvas, 5000);
+  // 10秒ごとにキャンバスを切り替え
+  setInterval(switchCanvas, 10000);
 
   // 自動スライド設定
   let autoSlideInterval: ReturnType<typeof setInterval> | null = null;

@@ -10,36 +10,43 @@ export const vertexShader = `
         return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
     }
 
-    // 改良版2Dノイズ - より不規則なパターンを生成
-    float noise(vec2 st) {
-        vec2 i = floor(st);
-        vec2 f = fract(st);
+    // 改良版Simplex-like 2Dノイズ
+    vec3 permute(vec3 x) { return mod(((x*34.0)+1.0)*x, 289.0); }
 
-        // 4つの角からのランダム値を非線形に合成
-        float a = random(i + vec2(0.0, 0.0));
-        float b = random(i + vec2(1.0, 0.0));
-        float c = random(i + vec2(0.0, 1.0));
-        float d = random(i + vec2(1.0, 1.0));
-
-        // より不規則な補間
-        vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
-
-        return mix(
-            mix(a, b, u.x),
-            mix(c, d, u.x),
-            u.y
-        );
+    float snoise(vec2 v) {
+        const vec4 C = vec4(0.211324865405187, 0.366025403784439,
+                           -0.577350269189626, 0.024390243902439);
+        vec2 i  = floor(v + dot(v, C.yy) );
+        vec2 x0 = v -   i + dot(i, C.xx);
+        vec2 i1;
+        i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+        vec4 x12 = x0.xyxy + C.xxzz;
+        x12.xy -= i1;
+        i = mod(i, 289.0);
+        vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))
+                         + i.x + vec3(0.0, i1.x, 1.0 ));
+        vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy),
+                               dot(x12.zw,x12.zw)), 0.0);
+        m = m*m ;
+        m = m*m ;
+        vec3 x = 2.0 * fract(p * C.www) - 1.0;
+        vec3 h = abs(x) - 0.5;
+        vec3 ox = floor(x + 0.5);
+        vec3 a0 = x - ox;
+        m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+        vec3 g;
+        g.x  = a0.x  * x0.x  + h.x  * x0.y;
+        g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+        return 130.0 * dot(m, g);
     }
 
-    // 追加の非線形ノイズ関数
     float fbm(vec2 st) {
         float value = 0.0;
         float amplitude = 0.5;
         float frequency = 1.0;
-        // オクターブを重ねてより複雑なノイズを生成
-        for(int i = 0; i < 5; i++) {
-            value += amplitude * noise(st * frequency);
-            st = st * 2.1 + vec2(1.5, -2.3); // 各オクターブで座標をずらす
+        for(int i = 0; i < 6; i++) {
+            value += amplitude * snoise(st * frequency);
+            st = st * 2.1 + vec2(1.5, -2.3);
             amplitude *= 0.5;
             frequency *= 2.0;
         }
@@ -50,32 +57,30 @@ export const vertexShader = `
         vUv = uv;
         vec3 pos = position;
 
-        // エッジ付近での歪みを抑制
+        // エッジ付近での歪みを制御
         vec2 uvFromCenter = uv - vec2(0.5);
-        float edgeWeight = 1.0 - smoothstep(0.3, 0.48, length(uvFromCenter));
+        float edgeWeight = 1.0 - smoothstep(0.35, 0.5, length(uvFromCenter));
 
-        // 不規則な微細振動（エッジで抑制）
+        // 時間に基づく動的な歪み
         float t = uTime * uSpeed;
-        float microVibration1 = sin(t * 43.0 + pos.x * 17.0) * 0.01;
-        float microVibration2 = cos(t * 31.0 + pos.y * 23.0) * 0.008;
-        float microVibration3 = sin(t * 57.0 + (pos.x + pos.y) * 13.0) * 0.006;
-        float combinedMicroVibration = (microVibration1 + microVibration2 + microVibration3) * edgeWeight;
+        vec2 noiseCoord = vec2(
+            pos.x * 0.8 + t * 0.3,
+            pos.y * 0.8 - t * 0.2
+        );
 
-        // 非線形なノイズパターンを生成
-        vec2 noiseCoord1 = vec2(pos.x * 15.0 + t * 1.5, pos.y * 13.0 - t);
-        vec2 noiseCoord2 = vec2(pos.y * 12.0 - t * 1.2, pos.x * 17.0 + t * 0.8);
-        vec2 noiseCoord3 = vec2((pos.x + pos.y) * 11.0 + t, (pos.x - pos.y) * 14.0 - t * 1.3);
+        // 複数の周波数の歪みを合成
+        float noise = fbm(noiseCoord);
+        float displacement = noise * uDistortionStrength * edgeWeight;
 
-        float noise1 = fbm(noiseCoord1) * 0.35;
-        float noise2 = fbm(noiseCoord2) * 0.25;
-        float noise3 = fbm(noiseCoord3) * 0.2;
+        // Z軸の変位を適用
+        pos.z += displacement * 2.0;
 
-        // ノイズを合成（エッジで抑制）
-        float finalNoise = (noise1 + noise2 + noise3) * 2.0 - 1.0;
-        float distortion = (finalNoise + combinedMicroVibration) * uDistortionStrength * edgeWeight;
+        // より有機的な動きのための追加の歪み
+        float organicNoise = snoise(vec2(t * 0.5, pos.y * 0.3)) *
+                            snoise(vec2(pos.x * 0.3, t * 0.4));
+        pos.z += organicNoise * uDistortionStrength * edgeWeight * 0.5;
 
-        pos.z += distortion;
-        vDistortion = distortion;
+        vDistortion = displacement;
 
         gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
     }
@@ -88,50 +93,42 @@ export const fragmentShader = `
     uniform float uDistortionStrength;
     uniform float uTime;
 
-    // フラグメントシェーダー用ノイズ関数
     float random(vec2 st) {
         return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
     }
 
     void main() {
         vec2 uv = vUv;
-        float t = uTime * 5.0;
+        float t = uTime * 0.8;
 
-        // エッジ付近での歪みを抑制
+        // エッジ付近での歪みを制御
         vec2 uvFromCenter = uv - vec2(0.5);
-        float edgeWeight = 1.0 - smoothstep(0.3, 0.48, length(uvFromCenter));
+        float edgeWeight = 1.0 - smoothstep(0.35, 0.5, length(uvFromCenter));
 
-        // アスペクト比を考慮した歪みの強さの調整
-        vec2 aspectAdjust = vec2(1.0, 1.777777778); // 16:9のアスペクト比に基づく調整
-        float distortion = vDistortion * 0.1;
-        vec2 distortedUv = uv;
+        // 歪みの強さを計算
+        float distortionStrength = vDistortion * uDistortionStrength;
 
-        // 複数の非線形な歪みを重ね合わせ（エッジで抑制、アスペクト比考慮）
-        vec2 noise1 = vec2(
-            random(uv + t * 0.1) * 2.0 - 1.0,
-            (random(uv + t * 0.2) * 2.0 - 1.0) / aspectAdjust.y
-        ) * distortion * 0.2 * edgeWeight;
+        // UVの歪み
+        vec2 distortedUv = uv + vec2(
+            sin(t + uv.y * 10.0) * 0.02,
+            cos(t + uv.x * 10.0) * 0.02
+        ) * distortionStrength * edgeWeight;
 
-        vec2 noise2 = vec2(
-            random(uv * 1.5 - t * 0.15) * 2.0 - 1.0,
-            (random(uv * 1.5 + t * 0.25) * 2.0 - 1.0) / aspectAdjust.y
-        ) * distortion * 0.15 * edgeWeight;
+        // より有機的な歪みを追加
+        distortedUv += vec2(
+            sin(t * 0.7 + distortedUv.y * 8.0) * 0.01,
+            cos(t * 0.6 + distortedUv.x * 8.0) * 0.01
+        ) * distortionStrength * edgeWeight;
 
-        vec2 noise3 = vec2(
-            random(uv * 2.0 + t * 0.3) * 2.0 - 1.0,
-            (random(uv * 2.0 - t * 0.35) * 2.0 - 1.0) / aspectAdjust.y
-        ) * distortion * 0.1 * edgeWeight;
-
-        // アスペクト比を考慮した歪みの適用
-        vec2 totalNoise = noise1 + noise2 + noise3;
-        distortedUv.x += totalNoise.x;
-        distortedUv.y += totalNoise.y;
-
-        // UV座標が範囲外にならないように制限
+        // UV座標を制限
         distortedUv = clamp(distortedUv, vec2(0.0), vec2(1.0));
 
         // テクスチャのサンプリング
         vec4 color = texture2D(uTexture, distortedUv);
+
+        // 歪みに基づく色の調整
+        float distortionColor = abs(vDistortion) * 0.1;
+        color.rgb += vec3(distortionColor) * edgeWeight;
 
         gl_FragColor = color;
     }

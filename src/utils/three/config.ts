@@ -5,20 +5,19 @@ export const settings = {
   touchSensitivity: 0.05,
   momentumMultiplier: 7.0,
   smoothing: 0.3,
-  slideLerp: 0.12,
-  distortionDecay: 0.96,
-  maxDistortion: 150.0,
-  distortionSensitivity: 6.4,
-  distortionSmoothing: 0.4,
+  slideLerp: 0.1,
+  distortionDecay: 0.95,
+  maxDistortion: 2.0,
+  distortionSensitivity: 0.08,
+  distortionSmoothing: 0.15,
   autoScrollSpeed: 0.002,
   userInteractionTimeout: 1200,
   liquidEffect: {
-    speed: 0.8,
-    strength: 240.0,
-    frequency: 256.8,
-    amplitude: 1800,
+    speed: 0.5,
+    intensity: 1.2,
+    frequency: 0.8,
   },
-};
+} as const;
 
 export const calculateSlideSize = (camera: THREE.PerspectiveCamera) => {
   const isPc = window.innerWidth >= 768;
