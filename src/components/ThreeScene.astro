@@ -590,9 +590,9 @@ import { animationTimings } from '../utils/animation-config';
           filter.style.opacity = '0';
           setTimeout(() => {
             filter.classList.remove('visible');
-          }, 200);
+          }, 1200);
         }
-      }, 150);
+      }, 1200);
     },
     { passive: false }
   );
@@ -619,10 +619,12 @@ import { animationTimings } from '../utils/animation-config';
       targetDistortionFactor = Math.min(1.0, targetDistortionFactor + touchStrength);
       targetPosition -= deltaX * settings.touchSensitivity * 2.5;
 
-      // フィルター効果を追加
+      // タッチ中はフィルターを最小値で表示
       const filter = document.querySelector('.img__filter') as HTMLElement;
       filter?.classList.add('visible');
-      if (filter) filter.style.opacity = '0.5';
+      if (filter) {
+        filter.style.opacity = '0.3';
+      }
     },
     { passive: false }
   );
@@ -634,14 +636,36 @@ import { animationTimings } from '../utils/animation-config';
         1.0,
         Math.abs(velocity) * 12.5 * settings.distortionSensitivity
       );
-    }
-    // フィルター効果を徐々に消す
-    const filter = document.querySelector('.img__filter') as HTMLElement;
-    if (filter) {
-      filter.style.opacity = '0';
-      setTimeout(() => {
-        filter.classList.remove('visible');
-      }, 200);
+
+      // フィルター効果を速度に基づいて設定
+      const filter = document.querySelector('.img__filter') as HTMLElement;
+      if (filter) {
+        filter.classList.add('visible');
+        const initialOpacity = Math.min(1.0, Math.max(0.3, Math.abs(velocity)));
+        filter.style.opacity = initialOpacity.toString();
+
+        // 速度に基づいて減衰時間を設定（速いほど長く表示）
+        const decayDuration = Math.min(2000, Math.max(800, Math.abs(velocity) * 1500));
+
+        // フィルターの不透明度を徐々に減少
+        let startTime = performance.now();
+        const animate = () => {
+          const currentTime = performance.now();
+          const elapsed = currentTime - startTime;
+          const progress = elapsed / decayDuration;
+
+          if (progress < 1) {
+            const currentOpacity = initialOpacity * (1 - progress);
+            filter.style.opacity = Math.max(0, currentOpacity).toString();
+            requestAnimationFrame(animate);
+          } else {
+            filter.style.opacity = '0';
+            filter.classList.remove('visible');
+          }
+        };
+
+        requestAnimationFrame(animate);
+      }
     }
     endUserInteraction();
   });
