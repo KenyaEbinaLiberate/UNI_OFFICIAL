@@ -50,7 +50,7 @@ import '../styles/index.scss';
       rel="stylesheet"
     />
   </head>
-  <body>
+  <body class="body">
     <div class="menu__bg__filter"></div>
     <div class="floating__navi">
       <figure class="navi__arrow">
@@ -117,7 +117,7 @@ import '../styles/index.scss';
           <defs>
             <style>
               .cls-1 {
-                fill: rgb(0, 0, 255);
+                fill: #eee;
               }
               .cls-2 {
                 fill: black;
@@ -187,7 +187,7 @@ import '../styles/index.scss';
       import { animationTimings } from '../utils/animation-config';
 
       document.addEventListener('DOMContentLoaded', () => {
-        const splashSection = document.querySelector('.splash__section');
+        const splashSection = document.querySelector('.body');
         if (splashSection) {
           // load01を追加
           setTimeout(() => {

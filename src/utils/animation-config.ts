@@ -2,12 +2,12 @@ export const animationTimings = {
   splash: {
     load01: 100, // 最初のスプラッシュアニメーション
     load02: 4500, // 2番目のスプラッシュアニメーション
-    load03: 5500, // 3番目のスプラッシュアニメーション
+    load03: 6400, // 3番目のスプラッシュアニメーション
   },
   threeScene: {
-    canvasFadeIn: 5500, // キャンバスのフェードイン開始
+    canvasFadeIn: 6500, // キャンバスのフェードイン開始
     initialAnimation: {
-      startDelay: 7000, // 初期アニメーション開始
+      startDelay: 8000, // 初期アニメーション開始
       duration: 2000, // アニメーション継続時間
       autoScrollDelay: 0, // 自動スクロール開始までの遅延
       autoScrollDuration: 2000, // 自動スクロールの継続時間
