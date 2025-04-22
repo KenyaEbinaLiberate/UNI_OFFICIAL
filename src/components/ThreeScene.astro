@@ -13,6 +13,15 @@ import { animationTimings } from '../utils/animation-config';
 <div class="img__filter"></div>
 <div class="canvas__mask"></div>
 
+<div class="canvas__navigation">
+  <button class="nav-button prev" aria-label="前のキャンバスへ">
+    <span>PREV</span>
+  </button>
+  <button class="nav-button next" aria-label="次のキャンバスへ">
+    <span>NEXT</span>
+  </button>
+</div>
+
 <style>
   .canvas-layer {
     position: fixed;
@@ -109,6 +118,43 @@ import { animationTimings } from '../utils/animation-config';
   .img__name.visible {
     opacity: 1;
     visibility: visible;
+  }
+
+  .canvas__navigation {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 20px;
+    z-index: 10;
+  }
+
+  .nav-button {
+    background: rgba(238, 238, 238, 0.8);
+    border: none;
+    padding: 12px 24px;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(8px);
+  }
+
+  .nav-button:hover {
+    background: rgba(238, 238, 238, 1);
+  }
+
+  @media (max-width: 767px) {
+    .canvas__navigation {
+      bottom: 20px;
+    }
+
+    .nav-button {
+      padding: 8px 16px;
+      font-size: 12px;
+    }
   }
 </style>
 
@@ -224,27 +270,6 @@ import { animationTimings } from '../utils/animation-config';
     updateSlidesSize();
   });
 
-  // フェードインアニメーション設定
-  setTimeout(() => {
-    canvases.canvas1.classList.add('visible');
-    document.querySelector('.img__name')?.classList.add('visible');
-
-    // 初期スライドインアニメーション
-    targetPosition = -slideUnit * 6; // 半スライド分移動
-    targetDistortionFactor = 1; // 適度な歪み効果
-    const filter = document.querySelector('.img__filter') as HTMLElement;
-    if (filter) {
-      filter.classList.add('visible');
-      filter.style.opacity = '0.5';
-      setTimeout(() => {
-        filter.style.opacity = '0';
-        setTimeout(() => {
-          filter.classList.remove('visible');
-        }, 200);
-      }, 1000);
-    }
-  }, animationTimings.threeScene.canvasFadeIn);
-
   let slideSize = calculateSlideSize(camera);
   const gap = 0;
   const slideCount = 6; // 各キャンバスのスライド数を6枚に変更
@@ -293,42 +318,61 @@ import { animationTimings } from '../utils/animation-config';
         material.uniforms.uTexture.value = lowResTexture;
         material.needsUpdate = true;
 
-        // 高解像度版を後から読み込む
-        new THREE.TextureLoader().load(
-          `/img${index}.webp`,
-          highResTexture => {
-            highResTexture.colorSpace = THREE.LinearSRGBColorSpace;
-            material.uniforms.uTexture.value = highResTexture;
-            material.needsUpdate = true;
+        // キャンバスが表示された時点で高解像度画像を読み込む
+        const loadHighRes = () => {
+          new THREE.TextureLoader().load(
+            `/img${index}.webp`,
+            highResTexture => {
+              highResTexture.colorSpace = THREE.LinearSRGBColorSpace;
+              material.uniforms.uTexture.value = highResTexture;
+              material.needsUpdate = true;
 
-            if (highResTexture.image) {
-              const imgAspect = highResTexture.image.width / highResTexture.image.height;
-              const slideAspect = slideSize.width / slideSize.height;
+              if (highResTexture.image) {
+                const imgAspect = highResTexture.image.width / highResTexture.image.height;
+                const slideAspect = slideSize.width / slideSize.height;
 
-              highResTexture.center.set(0.5, 0.5);
+                highResTexture.center.set(0.5, 0.5);
 
-              // object-fit: coverのような動作を実現
-              if (imgAspect > slideAspect) {
-                // 画像が対象エリアより横長の場合
-                const scale = slideAspect / imgAspect;
-                highResTexture.repeat.set(1, 1);
-                highResTexture.offset.x = (1 - scale) / 2;
-                highResTexture.offset.y = 0;
-              } else {
-                // 画像が対象エリアより縦長の場合
-                const scale = imgAspect / slideAspect;
-                highResTexture.repeat.set(1, 1);
-                highResTexture.offset.x = 0;
-                highResTexture.offset.y = (1 - scale) / 2;
+                // object-fit: coverのような動作を実現
+                if (imgAspect > slideAspect) {
+                  const scale = slideAspect / imgAspect;
+                  highResTexture.repeat.set(1, 1);
+                  highResTexture.offset.x = (1 - scale) / 2;
+                  highResTexture.offset.y = 0;
+                } else {
+                  const scale = imgAspect / slideAspect;
+                  highResTexture.repeat.set(1, 1);
+                  highResTexture.offset.x = 0;
+                  highResTexture.offset.y = (1 - scale) / 2;
+                }
+
+                highResTexture.wrapS = THREE.ClampToEdgeWrapping;
+                highResTexture.wrapT = THREE.ClampToEdgeWrapping;
               }
+            },
+            undefined,
+            error => console.warn('Error loading high-res texture:', error)
+          );
+        };
 
-              highResTexture.wrapS = THREE.ClampToEdgeWrapping;
-              highResTexture.wrapT = THREE.ClampToEdgeWrapping;
-            }
+        // キャンバスの表示状態を監視
+        const observer = new IntersectionObserver(
+          entries => {
+            entries.forEach(entry => {
+              if (entry.isIntersecting) {
+                loadHighRes();
+                observer.disconnect();
+              }
+            });
           },
-          undefined,
-          error => console.warn('Error loading high-res texture:', error)
+          { threshold: 0.1 }
         );
+
+        // キャンバス要素を監視
+        const canvasElement = canvases[`canvas${Math.ceil(index / 6)}` as keyof typeof canvases];
+        if (canvasElement) {
+          observer.observe(canvasElement);
+        }
       },
       undefined,
       error => console.warn('Error loading low-res texture:', error)
@@ -388,13 +432,21 @@ import { animationTimings } from '../utils/animation-config';
 
   // キャンバス切り替えの管理を更新
   let currentCanvasIndex = 1;
-  let isFirstSwitch = true;
+  let isTransitioning = false;
 
-  const switchCanvas = () => {
+  const switchCanvas = (direction: 'next' | 'prev') => {
+    if (isTransitioning) return;
+    isTransitioning = true;
+
     const currentCanvas = canvases[`canvas${currentCanvasIndex}` as keyof typeof canvases];
-    const nextCanvasIndex = (currentCanvasIndex % 4) + 1;
+    const nextCanvasIndex =
+      direction === 'next' ? (currentCanvasIndex % 4) + 1 : ((currentCanvasIndex - 2 + 4) % 4) + 1;
     const nextCanvas = canvases[`canvas${nextCanvasIndex}` as keyof typeof canvases];
     const mask = document.querySelector('.canvas__mask') as HTMLElement;
+
+    // パフォーマンスメトリクスの取得
+    const fps = 1000 / (performance.now() - lastUpdateTime);
+    const isLowPerformance = fps < 30;
 
     // 現在のキャンバスのスライドをリセット
     currentPosition = 0;
@@ -403,60 +455,86 @@ import { animationTimings } from '../utils/animation-config';
     // マスクアニメーションを開始
     mask.classList.add('active');
 
-    // アニメーション時間を画面サイズに応じて設定
-    const duration = window.innerWidth >= 768 ? 700 : 350;
-    const halfDuration = duration / 2;
+    // アニメーション時間をパフォーマンスと画面サイズに応じて動的に調整
+    const baseTransitionDuration = window.innerWidth >= 768 ? 700 : 350;
+    const transitionDuration = isLowPerformance
+      ? baseTransitionDuration * 1.5
+      : baseTransitionDuration;
+    const halfDuration = transitionDuration / 2;
 
-    // 自動スライドを一時停止
-    const wasAutoSliding = autoSlideInterval !== null;
-    stopAutoSlide();
+    // 次のキャンバスの画像を事前に高解像度で読み込む
+    const nextGroupSlides = slidesGroups[`slides${nextCanvasIndex}` as keyof typeof slidesGroups];
+    nextGroupSlides.forEach(slide => {
+      const material = slide.material as THREE.ShaderMaterial;
+      const imageIndex = slide.userData.currentImageIndex;
+      if (material.uniforms.uTexture.value?.image?.src?.includes('-low.webp')) {
+        new THREE.TextureLoader().load(`/img${imageIndex}.webp`, highResTexture => {
+          highResTexture.colorSpace = THREE.LinearSRGBColorSpace;
+          material.uniforms.uTexture.value = highResTexture;
+          material.needsUpdate = true;
+        });
+      }
+    });
 
     // マスクアニメーションの途中でキャンバスを切り替え
     setTimeout(() => {
-      currentCanvas.style.opacity = '0';
-      currentCanvas.style.visibility = 'hidden';
       nextCanvas.style.visibility = 'visible';
-      nextCanvas.style.opacity = '1';
+      nextCanvas.style.opacity = '0';
+
+      requestAnimationFrame(() => {
+        currentCanvas.style.opacity = '0';
+        currentCanvas.style.visibility = 'hidden';
+        nextCanvas.style.opacity = '1';
+      });
     }, halfDuration);
 
-    // マスクアニメーション終了時にクラスを削除し、自動スライドを再開
     setTimeout(() => {
       mask.classList.remove('active');
-      if (wasAutoSliding && !isUserInteracting) {
-        startAutoSlide();
-      }
-    }, duration);
+      isTransitioning = false;
+    }, transitionDuration);
 
     currentCanvasIndex = nextCanvasIndex;
+    lastUpdateTime = performance.now();
+  };
 
-    // 初回切り替え後、10秒間隔のインターバルを設定
-    if (isFirstSwitch) {
-      isFirstSwitch = false;
-      setInterval(switchCanvas, 10000);
+  // ナビゲーションボタンのイベントリスナーを追加
+  document.querySelector('.nav-button.next')?.addEventListener('click', () => {
+    switchCanvas('next');
+  });
+
+  document.querySelector('.nav-button.prev')?.addEventListener('click', () => {
+    switchCanvas('prev');
+  });
+
+  // キーボードナビゲーションのサポート
+  window.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') {
+      switchCanvas('next');
+    } else if (e.key === 'ArrowLeft') {
+      switchCanvas('prev');
     }
-  };
+  });
 
-  // 初回は15秒後に切り替え
-  setTimeout(() => switchCanvas(), 15000);
+  // 初期表示の設定
+  setTimeout(() => {
+    canvases.canvas1.classList.add('visible');
+    document.querySelector('.img__name')?.classList.add('visible');
 
-  // 自動スライド設定
-  let autoSlideInterval: ReturnType<typeof setInterval> | null = null;
-  const startAutoSlide = () => {
-    if (autoSlideInterval) return;
-    autoSlideInterval = setInterval(() => {
-      if (!isUserInteracting) {
-        targetPosition -= 0.001;
-        targetDistortionFactor = 0.01; // 歪み効果もさらに小さく
-      }
-    }, 12); // より頻繁な更新（約60FPS）
-  };
-
-  const stopAutoSlide = () => {
-    if (autoSlideInterval) {
-      clearInterval(autoSlideInterval);
-      autoSlideInterval = null;
+    // 初期スライドインアニメーション
+    targetPosition = -slideUnit * 6;
+    targetDistortionFactor = 1;
+    const filter = document.querySelector('.img__filter') as HTMLElement;
+    if (filter) {
+      filter.classList.add('visible');
+      filter.style.opacity = '0.5';
+      setTimeout(() => {
+        filter.style.opacity = '0';
+        setTimeout(() => {
+          filter.classList.remove('visible');
+        }, 200);
+      }, 1000);
     }
-  };
+  }, animationTimings.threeScene.canvasFadeIn);
 
   // アニメーション関数を更新
   const animate = (time: number): void => {
@@ -476,79 +554,58 @@ import { animationTimings } from '../utils/animation-config';
     // 平均速度を計算
     const averageSpeed = velocityHistory.reduce((a, b) => a + b, 0) / velocityHistory.length;
 
-    // フィルターの不透明度を速度に基づいて更新
-    const filter = document.querySelector('.img__filter') as HTMLElement;
-    if (filter) {
-      // 速度を直接的に不透明度にマッピング
-      const normalizedSpeed = Math.min(averageSpeed / 1, 5);
+    // アニメーションが必要かどうかを判断
+    const isAnimationNeeded =
+      Math.abs(currentPosition - targetPosition) > 0.001 ||
+      Math.abs(currentDistortionFactor - targetDistortionFactor) > 0.001 ||
+      averageSpeed > 0.1;
 
-      // 現在の不透明度を取得
-      const currentOpacity = parseFloat(filter.style.opacity) || 0;
+    if (isAnimationNeeded) {
+      Object.entries(slidesGroups).forEach(([groupKey, slides]) => {
+        const groupIndex = parseInt(groupKey.replace('slides', ''));
+        const scene = scenes[`scene${groupIndex}` as keyof typeof scenes];
+        const renderer = renderers[`renderer${groupIndex}` as keyof typeof renderers];
 
-      // より素早い補間（0.1）で目標の不透明度に向かって変化
-      const smoothedOpacity = THREE.MathUtils.lerp(currentOpacity, normalizedSpeed, 0.1);
+        slides.forEach(slide => {
+          const targetX = slide.userData.targetX + currentPosition;
+          slide.userData.currentX = THREE.MathUtils.lerp(
+            slide.userData.currentX,
+            targetX,
+            0.05 // よりゆっくりな補間
+          );
+          slide.position.x = slide.userData.currentX;
 
-      // フィルターの表示/非表示を制御
-      if (smoothedOpacity > 0.01) {
-        filter.classList.add('visible');
-        filter.classList.add('fade-in');
-        filter.style.opacity = smoothedOpacity.toString();
-      } else {
-        filter.classList.remove('fade-in');
-        filter.style.opacity = '0';
-        setTimeout(() => {
-          if (parseFloat(filter.style.opacity) === 0) {
-            filter.classList.remove('visible');
+          updateCurve(slide, slide.position.x, currentDistortionFactor);
+
+          if (slide.position.x < -totalWidth / 2) {
+            slide.position.x += totalWidth;
+            slide.userData.targetX += totalWidth;
+            slide.userData.currentX += totalWidth;
+          } else if (slide.position.x > totalWidth / 2) {
+            slide.position.x -= totalWidth;
+            slide.userData.targetX -= totalWidth;
+            slide.userData.currentX -= totalWidth;
           }
-        }, 1000);
-      }
-    }
 
-    // 各グループのスライドを更新
-    Object.entries(slidesGroups).forEach(([groupKey, slides]) => {
-      const groupIndex = parseInt(groupKey.replace('slides', ''));
-      const scene = scenes[`scene${groupIndex}` as keyof typeof scenes];
-      const renderer = renderers[`renderer${groupIndex}` as keyof typeof renderers];
+          const material = slide.material as THREE.ShaderMaterial;
+          material.uniforms.uTime.value = time * 0.001;
+          material.uniforms.uDistortionStrength.value = currentDistortionFactor;
+        });
 
-      slides.forEach(slide => {
-        const targetX = slide.userData.targetX + currentPosition;
-        slide.userData.currentX = THREE.MathUtils.lerp(
-          slide.userData.currentX,
-          targetX,
-          0.05 // よりゆっくりな補間
-        );
-        slide.position.x = slide.userData.currentX;
-
-        updateCurve(slide, slide.position.x, currentDistortionFactor);
-
-        if (slide.position.x < -totalWidth / 2) {
-          slide.position.x += totalWidth;
-          slide.userData.targetX += totalWidth;
-          slide.userData.currentX += totalWidth;
-        } else if (slide.position.x > totalWidth / 2) {
-          slide.position.x -= totalWidth;
-          slide.userData.targetX -= totalWidth;
-          slide.userData.currentX -= totalWidth;
-        }
-
-        const material = slide.material as THREE.ShaderMaterial;
-        material.uniforms.uTime.value = time * 0.001;
-        material.uniforms.uDistortionStrength.value = currentDistortionFactor;
+        renderer.render(scene, camera);
       });
 
-      renderer.render(scene, camera);
-    });
+      targetDistortionFactor *= settings.distortionDecay;
+      currentDistortionFactor = THREE.MathUtils.lerp(
+        currentDistortionFactor,
+        targetDistortionFactor,
+        settings.distortionSmoothing
+      );
 
-    targetDistortionFactor *= settings.distortionDecay;
-    currentDistortionFactor = THREE.MathUtils.lerp(
-      currentDistortionFactor,
-      targetDistortionFactor,
-      settings.distortionSmoothing
-    );
+      currentPosition = THREE.MathUtils.lerp(currentPosition, targetPosition, 0.1);
 
-    currentPosition = THREE.MathUtils.lerp(currentPosition, targetPosition, 0.1);
-
-    updateCenterImageIndex();
+      updateCenterImageIndex();
+    }
   };
 
   // スライドのサイズを更新する関数
@@ -616,12 +673,10 @@ import { animationTimings } from '../utils/animation-config';
   const startUserInteraction = () => {
     isUserInteracting = true;
     lastInteractionTime = performance.now();
-    stopAutoSlide();
   };
 
   const endUserInteraction = () => {
     isUserInteracting = false;
-    startAutoSlide();
   };
 
   // イベントリスナーを追加
@@ -866,5 +921,4 @@ import { animationTimings } from '../utils/animation-config';
 
   // アニメーションを開始
   animate(performance.now());
-  startAutoSlide();
 </script>
