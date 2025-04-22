@@ -21,8 +21,8 @@ export const settings = {
 
 export const calculateSlideSize = (camera: THREE.PerspectiveCamera) => {
   const viewportHeight = 2 * Math.tan((camera.fov * Math.PI) / 180 / 2) * camera.position.z;
-  // 常に9:16のアスペクト比を維持
-  const viewportWidth = (viewportHeight * 9) / 16;
+  // アスペクト比を15:24に変更（より縦長に）
+  const viewportWidth = (viewportHeight * 15) / 24;
 
   return {
     width: viewportWidth,

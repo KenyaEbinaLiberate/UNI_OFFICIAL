@@ -30,10 +30,16 @@ import '../styles/index.scss';
     <meta name="robots" content="index, follow" />
 
     <!-- ページタイトル -->
-    <title>SELECT STORE UNI OFFICIAL SITE</title>
-    <meta name="description" content="FUN IS COOL SELECT STORE OPEN FOR 25SS COMING SOON…" />
+    <title>SELECT STORE UNI | OFFICIAL SITE | 東京浅草橋のセレクトショップ</title>
+    <meta
+      name="description"
+      content="デザインエージェンシーLIBERATEが運営する東京・浅草橋のセレクトショップ「UNI SELECT STORE」。"
+    />
     <meta property="og:title" content="UNI OFFICIAL SITE" />
-    <meta property="og:description" content="FUN IS COOL SELECT STORE OPEN FOR 25SS COMING SOON…" />
+    <meta
+      property="og:description"
+      content="デザインエージェンシーLIBERATEが運営する東京・浅草橋のセレクトショップ「UNI SELECT STORE」。"
+    />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://uni.liberate-group.com/" />
     <link rel="canonical" href="https://uni.liberate-group.com/" />
@@ -49,6 +55,22 @@ import '../styles/index.scss';
       href="https://fonts.googleapis.com/css2?family=Doto:wght@100..900&family=Poppins:wght@500;600&display=swap"
       rel="stylesheet"
     />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "Store",
+        "name": "UNI SELECT STORE",
+        "alternateName": "UNI 浅草橋",
+        "url": "https://uni.liberate-group.com/",
+        "address": {
+          "@type": "PostalAddress",
+          "addressLocality": "台東区浅草橋",
+          "addressRegion": "東京都",
+          "postalCode": "111-0053",
+          "streetAddress": "1-25-2"
+        }
+      }
+    </script>
   </head>
   <body class="body">
     <div class="menu__bg__filter"></div>
@@ -161,6 +183,11 @@ import '../styles/index.scss';
           setTimeout(() => {
             splashSection.classList.add('load03');
           }, animationTimings.splash.load03);
+
+          // load04を追加
+          setTimeout(() => {
+            splashSection.classList.add('load04');
+          }, animationTimings.splash.load04);
         }
       });
     </script>

@@ -39,6 +39,11 @@ $splashDelay: 3.8s;
       clip-path: inset(0 100% 0 0);
     }
   }
+  &.load04 {
+    .splash__copy {
+      opacity: 0;
+    }
+  }
 }
 .splash__section {
   background: $blue;
@@ -306,13 +311,13 @@ $splashDelay: 3.8s;
     transform 0.2s ease,
     background-color 0.2s ease;
   z-index: 1000;
-  animation: fadeInAnm 0.6s ease-in-out 6.5s forwards 1;
+  animation: fadeInAnm 0.6s ease-in-out 8.5s forwards 1;
   bottom: 0;
   scale: 0.75;
   opacity: 0;
   transform-style: preserve-3d;
   @media (min-width: 768px) {
-    animation: fadeInAnmPC 0.6s ease-in-out 6.5s forwards 1;
+    animation: fadeInAnmPC 0.6s ease-in-out 8.5s forwards 1;
     right: 30px;
   }
   @include pc_hover {
@@ -606,6 +611,9 @@ $splashDelay: 3.8s;
     left: 30px;
     bottom: 30px;
     animation: clipIn 0.6s ease-in-out 6.5s forwards 1;
+  }
+  @include smp {
+    display: none;
   }
 }
 

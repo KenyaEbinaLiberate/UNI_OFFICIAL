@@ -3,6 +3,7 @@ export const animationTimings = {
     load01: 1000, // SVGアニメーション完了後
     load02: 4500, // 2番目のスプラッシュアニメーション
     load03: 7400, // 3番目のスプラッシュアニメーション
+    load04: 8000, // 4番目のスプラッシュアニメーション
   },
   threeScene: {
     canvasFadeIn: 7500, // キャンバスのフェードイン開始
@@ -14,7 +15,7 @@ export const animationTimings = {
     },
   },
   settings: {
-    autoScrollSpeed: 0.002,
+    autoScrollSpeed: 0.001,
     userInteractionTimeout: 1200,
     liquidEffect: {
       speed: 0.8,

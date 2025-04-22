@@ -18,4 +18,5 @@ export interface SlideInterface extends THREE.Mesh<THREE.PlaneGeometry, THREE.Sh
 
 export interface ExtendedWindow extends Window {
   scrollTimeout?: ReturnType<typeof setTimeout>;
+  filterFadeTimeout?: ReturnType<typeof setTimeout>;
 }

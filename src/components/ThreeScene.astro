@@ -87,13 +87,17 @@ import { animationTimings } from '../utils/animation-config';
     visibility: hidden;
     pointer-events: none;
     mix-blend-mode: screen;
-    transition: opacity 2.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: opacity 1s ease-out;
     backdrop-filter: brightness(1.2) contrast(2);
     z-index: 1;
   }
 
   .img__filter.visible {
     visibility: visible;
+  }
+
+  .img__filter.fade-in {
+    transition: none;
   }
 
   .img__name {
@@ -264,6 +268,7 @@ import { animationTimings } from '../utils/animation-config';
   let touchStartX = 0;
   let touchLastX = 0;
   let prevPosition = 0;
+  let lastUpdateTime = performance.now();
 
   let currentDistortionFactor = 0;
   let targetDistortionFactor = 0;
@@ -299,21 +304,22 @@ import { animationTimings } from '../utils/animation-config';
             if (highResTexture.image) {
               const imgAspect = highResTexture.image.width / highResTexture.image.height;
               const slideAspect = slideSize.width / slideSize.height;
-              const viewportAspect = window.innerWidth / window.innerHeight;
 
               highResTexture.center.set(0.5, 0.5);
 
               // object-fit: coverのような動作を実現
-              if (imgAspect > viewportAspect) {
-                const scale = viewportAspect / imgAspect;
-                highResTexture.repeat.set(scale, 1);
+              if (imgAspect > slideAspect) {
+                // 画像が対象エリアより横長の場合
+                const scale = slideAspect / imgAspect;
+                highResTexture.repeat.set(1, 1);
                 highResTexture.offset.x = (1 - scale) / 2;
                 highResTexture.offset.y = 0;
               } else {
-                const scale = imgAspect / viewportAspect;
-                highResTexture.repeat.set(1, scale);
-                highResTexture.offset.y = (1 - scale) / 2;
+                // 画像が対象エリアより縦長の場合
+                const scale = imgAspect / slideAspect;
+                highResTexture.repeat.set(1, 1);
                 highResTexture.offset.x = 0;
+                highResTexture.offset.y = (1 - scale) / 2;
               }
 
               highResTexture.wrapS = THREE.ClampToEdgeWrapping;
@@ -345,12 +351,16 @@ import { animationTimings } from '../utils/animation-config';
     });
 
     const mesh = new THREE.Mesh(geometry, material) as SlideInterface;
+
+    // 各キャンバスの画像グループに対応するインデックスを計算
+    const imageIndex = (groupIndex - 1) * 6 + index + 1;
+
     mesh.userData = {
       originalVertices: Array.from(geometry.attributes.position.array),
       targetX: index * (slideSize.width + gap),
       currentX: index * (slideSize.width + gap),
       index: index,
-      currentImageIndex: index + 1 + (groupIndex - 1) * 6,
+      currentImageIndex: imageIndex,
       nextTexture: null,
       isTransitioning: false,
       transitionProgress: 0,
@@ -359,29 +369,36 @@ import { animationTimings } from '../utils/animation-config';
       visible: true,
     };
 
-    // 新しい画像読み込み関数を使用
-    loadTexture(mesh.userData.currentImageIndex, material);
+    // 対応する画像グループの画像を読み込み
+    loadTexture(imageIndex, material);
 
-    // グループに応じてスライドを追加
+    // 対応するキャンバスのシーンにスライドを追加
     const targetSlides = slidesGroups[`slides${groupIndex}` as keyof typeof slidesGroups];
     targetSlides.push(mesh);
     scenes[`scene${groupIndex}` as keyof typeof scenes].add(mesh);
   };
 
-  // 各グループのスライドを作成
+  // 各キャンバスのスライドを作成（6枚ずつ）
   for (let groupIndex = 1; groupIndex <= 4; groupIndex++) {
-    for (let i = 0; i < slideCount; i++) {
+    for (let i = 0; i < 6; i++) {
+      // slideCountではなく固定で6枚
       createSlide(i, groupIndex);
     }
   }
 
-  // キャンバス切り替えの管理
+  // キャンバス切り替えの管理を更新
   let currentCanvasIndex = 1;
+  let isFirstSwitch = true;
+
   const switchCanvas = () => {
     const currentCanvas = canvases[`canvas${currentCanvasIndex}` as keyof typeof canvases];
     const nextCanvasIndex = (currentCanvasIndex % 4) + 1;
     const nextCanvas = canvases[`canvas${nextCanvasIndex}` as keyof typeof canvases];
     const mask = document.querySelector('.canvas__mask') as HTMLElement;
+
+    // 現在のキャンバスのスライドをリセット
+    currentPosition = 0;
+    targetPosition = 0;
 
     // マスクアニメーションを開始
     mask.classList.add('active');
@@ -411,10 +428,16 @@ import { animationTimings } from '../utils/animation-config';
     }, duration);
 
     currentCanvasIndex = nextCanvasIndex;
+
+    // 初回切り替え後、10秒間隔のインターバルを設定
+    if (isFirstSwitch) {
+      isFirstSwitch = false;
+      setInterval(switchCanvas, 10000);
+    }
   };
 
-  // 10秒ごとにキャンバスを切り替え
-  setInterval(switchCanvas, 10000);
+  // 初回は15秒後に切り替え
+  setTimeout(() => switchCanvas(), 15000);
 
   // 自動スライド設定
   let autoSlideInterval: ReturnType<typeof setInterval> | null = null;
@@ -422,10 +445,10 @@ import { animationTimings } from '../utils/animation-config';
     if (autoSlideInterval) return;
     autoSlideInterval = setInterval(() => {
       if (!isUserInteracting) {
-        targetPosition -= 0.0005; // 0.5を100倍遅く
+        targetPosition -= 0.001;
         targetDistortionFactor = 0.01; // 歪み効果もさらに小さく
       }
-    }, 16); // より頻繁な更新（約60FPS）
+    }, 12); // より頻繁な更新（約60FPS）
   };
 
   const stopAutoSlide = () => {
@@ -441,6 +464,45 @@ import { animationTimings } from '../utils/animation-config';
 
     const deltaTime = lastTime ? (time - lastTime) / 1000 : 0.016;
     lastTime = time;
+
+    // スライドの移動速度を計算（ピクセル/秒）
+    const currentSpeed = Math.abs(currentPosition - prevPosition) / deltaTime;
+    prevPosition = currentPosition;
+
+    // 速度の履歴を更新（より短いウィンドウ）
+    velocityHistory.push(currentSpeed);
+    if (velocityHistory.length > 3) velocityHistory.shift();
+
+    // 平均速度を計算
+    const averageSpeed = velocityHistory.reduce((a, b) => a + b, 0) / velocityHistory.length;
+
+    // フィルターの不透明度を速度に基づいて更新
+    const filter = document.querySelector('.img__filter') as HTMLElement;
+    if (filter) {
+      // 速度を直接的に不透明度にマッピング
+      const normalizedSpeed = Math.min(averageSpeed / 1, 5);
+
+      // 現在の不透明度を取得
+      const currentOpacity = parseFloat(filter.style.opacity) || 0;
+
+      // より素早い補間（0.1）で目標の不透明度に向かって変化
+      const smoothedOpacity = THREE.MathUtils.lerp(currentOpacity, normalizedSpeed, 0.1);
+
+      // フィルターの表示/非表示を制御
+      if (smoothedOpacity > 0.01) {
+        filter.classList.add('visible');
+        filter.classList.add('fade-in');
+        filter.style.opacity = smoothedOpacity.toString();
+      } else {
+        filter.classList.remove('fade-in');
+        filter.style.opacity = '0';
+        setTimeout(() => {
+          if (parseFloat(filter.style.opacity) === 0) {
+            filter.classList.remove('visible');
+          }
+        }, 1000);
+      }
+    }
 
     // 各グループのスライドを更新
     Object.entries(slidesGroups).forEach(([groupKey, slides]) => {
@@ -588,10 +650,11 @@ import { animationTimings } from '../utils/animation-config';
       targetDistortionFactor = Math.min(1.0, targetDistortionFactor + wheelStrength);
       targetPosition -= e.deltaY * settings.wheelSensitivity;
 
-      // フィルター効果を追加
+      // フィルターの表示を開始
       const filter = document.querySelector('.img__filter') as HTMLElement;
-      filter?.classList.add('visible');
-      if (filter) filter.style.opacity = '0.5';
+      if (filter) {
+        filter.classList.add('visible');
+      }
 
       startUserInteraction();
 
@@ -600,14 +663,6 @@ import { animationTimings } from '../utils/animation-config';
       }
       window.scrollTimeout = setTimeout(() => {
         endUserInteraction();
-        // フィルター効果を徐々に消す
-        const filter = document.querySelector('.img__filter') as HTMLElement;
-        if (filter) {
-          filter.style.opacity = '0';
-          setTimeout(() => {
-            filter.classList.remove('visible');
-          }, 2500);
-        }
       }, 2000);
     },
     { passive: false }
@@ -635,11 +690,10 @@ import { animationTimings } from '../utils/animation-config';
       targetDistortionFactor = Math.min(1.0, targetDistortionFactor + touchStrength);
       targetPosition -= deltaX * settings.touchSensitivity * 2.5;
 
-      // タッチ中はフィルターを最小値で表示
+      // フィルターの表示を開始
       const filter = document.querySelector('.img__filter') as HTMLElement;
-      filter?.classList.add('visible');
       if (filter) {
-        filter.style.opacity = '0.3';
+        filter.classList.add('visible');
       }
     },
     { passive: false }
@@ -657,7 +711,8 @@ import { animationTimings } from '../utils/animation-config';
       const filter = document.querySelector('.img__filter') as HTMLElement;
       if (filter) {
         filter.classList.add('visible');
-        const initialOpacity = Math.min(1.0, Math.max(0.3, Math.abs(velocity)));
+        const normalizedVelocity = Math.min(Math.abs(velocity), 1);
+        const initialOpacity = normalizedVelocity; // 最大値1
         filter.style.opacity = initialOpacity.toString();
 
         // 速度に基づいて減衰時間を設定（速いほど長く表示）
@@ -692,13 +747,13 @@ import { animationTimings } from '../utils/animation-config';
 
   // 画像ごとのテキスト情報を定義
   const imageDescriptions: { [key: number]: string } = {
-    1: '01 / 250324 / GEN IZAWA',
-    2: '02 / 250324 / GEN IZAWA',
-    3: '03 / 250324 / GEN IZAWA',
-    4: '04 / 250324 / GEN IZAWA',
-    5: '05 / 250324 / GEN IZAWA',
-    6: '06 / 250324 / GEN IZAWA',
-    7: '07 / 250203 / SEVESKIG',
+    1: 'FUN IS COOL',
+    2: 'FUN IS COOL',
+    3: 'FUN IS COOL',
+    4: 'FUN IS COOL',
+    5: 'FUN IS COOL',
+    6: 'FUN IS COOL',
+    7: 'FUN IS COOL',
     8: '08 / 250203 / SEVESKIG',
     9: '09 / 250203 / SEVESKIG',
     10: '10 / 250203 / SEVESKIG',
@@ -710,12 +765,12 @@ import { animationTimings } from '../utils/animation-config';
     16: '16 / 2501015 / jisetsu',
     17: '17 / 251015 / jisetsu',
     18: '18 / 251015 / jisetsu',
-    19: '19 / 251015 / jisetsu',
-    20: '20 / 251015 / jisetsu',
-    21: '21 / 251015 / jisetsu',
-    22: '22 / 251015 / jisetsu',
-    23: '23 / 251015 / jisetsu',
-    24: '24 / 251015 / jisetsu',
+    19: '19 / 250417 / STORE',
+    20: '20 / 250417 / STORE',
+    21: '21 / 250417 / STORE',
+    22: '22 / 250417 / STORE',
+    23: '23 / 250417 / STORE',
+    24: '24 / 250417 / STORE',
   };
 
   const imgNameElement = document.querySelector('.img__name');
