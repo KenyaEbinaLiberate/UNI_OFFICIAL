@@ -1124,9 +1124,24 @@ a {
     font-weight: 100;
   }
 }
+.brush-stroke {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: draw 2s cubic-bezier(0.645, 0.045, 0.355, 1) forwards;
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.brush-texture {
+  filter: url(#brush-filter);
+}
+
 .body.load01 .splash__copy {
-  -webkit-clip-path: inset(0 0 0 100%);
-          clip-path: inset(0 0 0 100%);
+  -webkit-clip-path: inset(0 0 0 0);
+          clip-path: inset(0 0 0 0);
 }
 .body.load02 .splash__bg {
   -webkit-clip-path: inset(0 0 0 100%);
@@ -1182,15 +1197,14 @@ a {
 .splash__section .splash__copy {
   position: absolute;
   left: 50%;
-  top: 45%;
-  transform: translate(-50%, -50%);
+  bottom: 30px;
+  transform: translate(-50%, 0%);
   transform-origin: left top;
   width: calc(100% - 60px);
-  max-width: 1024px;
   z-index: 1001;
-  -webkit-clip-path: inset(0 0 0 0);
-          clip-path: inset(0 0 0 0);
-  transition: 0.5s ease-in-out 2.4s;
+  -webkit-clip-path: inset(0 100% 0 0);
+          clip-path: inset(0 100% 0 0);
+  transition: 0.5s ease-in-out 0s;
 }
 .splash__section h1 {
   font-size: 10px;
@@ -1230,6 +1244,7 @@ a {
   top: auto;
   bottom: 20px;
   gap: 0;
+  display: none;
 }
 .splash__section .head__wrap.skill__wrap .label__text {
   font-size: 10px;
@@ -1384,7 +1399,7 @@ a {
 }
 @media screen and (max-width: 768px) {
   .brand__list .brand__list__wrap .brand__list-inner {
-    width: 200vw;
+    width: 350vw;
   }
 }
 .brand__list .brand__list__wrap .brand__list-inner p {
@@ -1394,110 +1409,109 @@ a {
   font-weight: 500;
   letter-spacing: 0;
   scale: 0.8;
-  width: -moz-fit-content;
-  width: fit-content;
+  width: 180px;
   -webkit-clip-path: inset(0 100% 0 0);
           clip-path: inset(0 100% 0 0);
-  animation: clipIn 0.3s ease-in-out forwards 1;
+  animation: clipIn 0.3s ease-in-out forwards 1.5;
 }
 .brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(1) {
-  animation-delay: 6.4s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(2) {
-  animation-delay: 6.5s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(3) {
-  animation-delay: 6.6s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(4) {
-  animation-delay: 6.7s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(5) {
-  animation-delay: 6.8s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(6) {
-  animation-delay: 6.9s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(7) {
-  animation-delay: 7s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(8) {
-  animation-delay: 7.1s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(9) {
-  animation-delay: 7.2s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(10) {
-  animation-delay: 7.3s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(11) {
-  animation-delay: 7.4s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(12) {
-  animation-delay: 7.5s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(13) {
-  animation-delay: 7.6s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(14) {
-  animation-delay: 7.7s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(15) {
-  animation-delay: 7.8s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(16) {
-  animation-delay: 7.9s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(17) {
-  animation-delay: 8s;
-}
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(18) {
   animation-delay: 8.1s;
 }
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(19) {
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(2) {
   animation-delay: 8.2s;
 }
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(20) {
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(3) {
   animation-delay: 8.3s;
 }
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(21) {
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(4) {
   animation-delay: 8.4s;
 }
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(22) {
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(5) {
   animation-delay: 8.5s;
 }
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(23) {
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(6) {
   animation-delay: 8.6s;
 }
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(24) {
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(7) {
   animation-delay: 8.7s;
 }
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(25) {
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(8) {
   animation-delay: 8.8s;
 }
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(26) {
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(9) {
   animation-delay: 8.9s;
 }
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(27) {
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(10) {
   animation-delay: 9s;
 }
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(28) {
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(11) {
   animation-delay: 9.1s;
 }
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(29) {
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(12) {
   animation-delay: 9.2s;
 }
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(30) {
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(13) {
   animation-delay: 9.3s;
 }
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(31) {
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(14) {
   animation-delay: 9.4s;
 }
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(32) {
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(15) {
   animation-delay: 9.5s;
 }
-.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(33) {
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(16) {
   animation-delay: 9.6s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(17) {
+  animation-delay: 9.7s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(18) {
+  animation-delay: 9.8s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(19) {
+  animation-delay: 9.9s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(20) {
+  animation-delay: 10s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(21) {
+  animation-delay: 10.1s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(22) {
+  animation-delay: 10.2s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(23) {
+  animation-delay: 10.3s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(24) {
+  animation-delay: 10.4s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(25) {
+  animation-delay: 10.5s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(26) {
+  animation-delay: 10.6s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(27) {
+  animation-delay: 10.7s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(28) {
+  animation-delay: 10.8s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(29) {
+  animation-delay: 10.9s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(30) {
+  animation-delay: 11s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(31) {
+  animation-delay: 11.1s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(32) {
+  animation-delay: 11.2s;
+}
+.brand__list .brand__list__wrap .brand__list-inner p:nth-of-type(33) {
+  animation-delay: 11.3s;
 }
 @keyframes scrollBrands {
   0% {
@@ -1578,11 +1592,11 @@ a {
   bottom: 0;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  animation: fadeInAnm 0.6s ease-in-out 6.5s forwards 1;
+  animation: fadeInAnm 0.6s ease-in-out 8.5s forwards 1;
 }
 @media (min-width: 768px) {
   .floating__navi {
-    animation: fadeInAnmPC 0.6s ease-in-out 6.5s forwards 1;
+    animation: fadeInAnmPC 0.6s ease-in-out 8.5s forwards 1;
   }
 }
 @media only screen and (min-width: 1025px) {

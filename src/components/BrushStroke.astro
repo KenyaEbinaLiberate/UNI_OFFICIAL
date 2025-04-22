@@ -1,0 +1,68 @@
+---
+interface Props {
+  text: string;
+  color?: string;
+  width?: number;
+  height?: number;
+}
+
+const { text, color = '#000000', width = 300, height = 100 } = Astro.props;
+---
+
+<div class="brush-container">
+  <svg width={width} height={height} viewBox="0 0 300 100">
+    <!-- 筆のテクスチャ用フィルター -->
+    <defs>
+      <filter id="brush-filter">
+        <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise"
+        ></feTurbulence>
+        <feDisplacementMap in="SourceGraphic" in2="noise" scale="2"></feDisplacementMap>
+      </filter>
+    </defs>
+
+    <!-- テキストのパス定義 -->
+    <path id="textPath" d="M10,50 Q150,50 290,50" fill="none" stroke="none"></path>
+
+    <!-- テキストを筆書き風に表示 -->
+    <text class="brush-text">
+      <textPath href="#textPath" startOffset="0%">
+        <tspan class="brush-stroke brush-texture" fill={color}>{text}</tspan>
+      </textPath>
+    </text>
+  </svg>
+</div>
+
+<style>
+  .brush-container {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .brush-text {
+    font-size: 48px;
+    font-family:
+      '游明朝', YuMincho, 'Hiragino Mincho ProN W3', 'ヒラギノ明朝 ProN W3', 'Hiragino Mincho ProN',
+      'HG明朝E', 'ＭＳ Ｐ明朝', 'ＭＳ 明朝', serif;
+  }
+
+  /* 連続する文字のアニメーションディレイ */
+  .brush-stroke {
+    animation-delay: calc(var(--char-index) * 0.1s);
+  }
+</style>
+
+<script>
+  // 文字ごとにアニメーションディレイを設定
+  document.querySelectorAll('.brush-text').forEach(textElement => {
+    const text = textElement.textContent || '';
+    textElement.textContent = '';
+
+    [...text].forEach((char, index) => {
+      const tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+      tspan.textContent = char;
+      tspan.classList.add('brush-stroke', 'brush-texture');
+      tspan.style.setProperty('--char-index', index.toString());
+      textElement.appendChild(tspan);
+    });
+  });
+</script>

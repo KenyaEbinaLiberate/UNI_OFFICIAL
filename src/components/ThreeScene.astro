@@ -8,6 +8,7 @@ import { animationTimings } from '../utils/animation-config';
 <canvas id="canvas1" class="canvas-layer"></canvas>
 <canvas id="canvas2" class="canvas-layer"></canvas>
 <canvas id="canvas3" class="canvas-layer"></canvas>
+<canvas id="canvas4" class="canvas-layer"></canvas>
 <div class="img__name"></div>
 <div class="img__filter"></div>
 <div class="canvas__mask"></div>
@@ -86,7 +87,7 @@ import { animationTimings } from '../utils/animation-config';
     visibility: hidden;
     pointer-events: none;
     mix-blend-mode: screen;
-    transition: opacity 0.2s ease-out;
+    transition: opacity 2.5s cubic-bezier(0.4, 0, 0.2, 1);
     backdrop-filter: brightness(1.2) contrast(2);
     z-index: 1;
   }
@@ -125,9 +126,10 @@ import { animationTimings } from '../utils/animation-config';
     canvas1: document.getElementById('canvas1') as HTMLCanvasElement,
     canvas2: document.getElementById('canvas2') as HTMLCanvasElement,
     canvas3: document.getElementById('canvas3') as HTMLCanvasElement,
+    canvas4: document.getElementById('canvas4') as HTMLCanvasElement,
   };
 
-  if (!canvases.canvas1 || !canvases.canvas2 || !canvases.canvas3) {
+  if (!canvases.canvas1 || !canvases.canvas2 || !canvases.canvas3 || !canvases.canvas4) {
     throw new Error('Canvas elements not found');
   }
 
@@ -156,6 +158,11 @@ import { animationTimings } from '../utils/animation-config';
       antialias: true,
       preserveDrawingBuffer: true,
     }),
+    renderer4: new THREE.WebGLRenderer({
+      canvas: canvases.canvas4,
+      antialias: true,
+      preserveDrawingBuffer: true,
+    }),
   };
 
   // レンダラーの共通設定
@@ -169,6 +176,7 @@ import { animationTimings } from '../utils/animation-config';
     scene1: new THREE.Scene(),
     scene2: new THREE.Scene(),
     scene3: new THREE.Scene(),
+    scene4: new THREE.Scene(),
   };
 
   // シーンの背景色設定
@@ -235,8 +243,8 @@ import { animationTimings } from '../utils/animation-config';
 
   let slideSize = calculateSlideSize(camera);
   const gap = 0;
-  const slideCount = 8;
-  const imagesCount = 24; // 全画像数を24に更新
+  const slideCount = 6; // 各キャンバスのスライド数を6枚に変更
+  const imagesCount = 24; // 全画像数（6枚 × 4キャンバス）
   const totalWidth = slideCount * slideSize.width;
   const slideUnit = slideSize.width;
 
@@ -245,6 +253,7 @@ import { animationTimings } from '../utils/animation-config';
     slides1: [] as SlideInterface[],
     slides2: [] as SlideInterface[],
     slides3: [] as SlideInterface[],
+    slides4: [] as SlideInterface[],
   };
 
   let currentPosition = 0;
@@ -341,7 +350,7 @@ import { animationTimings } from '../utils/animation-config';
       targetX: index * (slideSize.width + gap),
       currentX: index * (slideSize.width + gap),
       index: index,
-      currentImageIndex: index + 1 + (groupIndex - 1) * 8,
+      currentImageIndex: index + 1 + (groupIndex - 1) * 6,
       nextTexture: null,
       isTransitioning: false,
       transitionProgress: 0,
@@ -360,7 +369,7 @@ import { animationTimings } from '../utils/animation-config';
   };
 
   // 各グループのスライドを作成
-  for (let groupIndex = 1; groupIndex <= 3; groupIndex++) {
+  for (let groupIndex = 1; groupIndex <= 4; groupIndex++) {
     for (let i = 0; i < slideCount; i++) {
       createSlide(i, groupIndex);
     }
@@ -370,7 +379,7 @@ import { animationTimings } from '../utils/animation-config';
   let currentCanvasIndex = 1;
   const switchCanvas = () => {
     const currentCanvas = canvases[`canvas${currentCanvasIndex}` as keyof typeof canvases];
-    const nextCanvasIndex = (currentCanvasIndex % 3) + 1;
+    const nextCanvasIndex = (currentCanvasIndex % 4) + 1;
     const nextCanvas = canvases[`canvas${nextCanvasIndex}` as keyof typeof canvases];
     const mask = document.querySelector('.canvas__mask') as HTMLElement;
 
@@ -381,6 +390,10 @@ import { animationTimings } from '../utils/animation-config';
     const duration = window.innerWidth >= 768 ? 700 : 350;
     const halfDuration = duration / 2;
 
+    // 自動スライドを一時停止
+    const wasAutoSliding = autoSlideInterval !== null;
+    stopAutoSlide();
+
     // マスクアニメーションの途中でキャンバスを切り替え
     setTimeout(() => {
       currentCanvas.style.opacity = '0';
@@ -389,9 +402,12 @@ import { animationTimings } from '../utils/animation-config';
       nextCanvas.style.opacity = '1';
     }, halfDuration);
 
-    // マスクアニメーション終了時にクラスを削除
+    // マスクアニメーション終了時にクラスを削除し、自動スライドを再開
     setTimeout(() => {
       mask.classList.remove('active');
+      if (wasAutoSliding && !isUserInteracting) {
+        startAutoSlide();
+      }
     }, duration);
 
     currentCanvasIndex = nextCanvasIndex;
@@ -590,9 +606,9 @@ import { animationTimings } from '../utils/animation-config';
           filter.style.opacity = '0';
           setTimeout(() => {
             filter.classList.remove('visible');
-          }, 1200);
+          }, 2500);
         }
-      }, 1200);
+      }, 2000);
     },
     { passive: false }
   );
@@ -645,7 +661,7 @@ import { animationTimings } from '../utils/animation-config';
         filter.style.opacity = initialOpacity.toString();
 
         // 速度に基づいて減衰時間を設定（速いほど長く表示）
-        const decayDuration = Math.min(2000, Math.max(800, Math.abs(velocity) * 1500));
+        const decayDuration = Math.min(4000, Math.max(2500, Math.abs(velocity) * 3000));
 
         // フィルターの不透明度を徐々に減少
         let startTime = performance.now();
@@ -655,12 +671,16 @@ import { animationTimings } from '../utils/animation-config';
           const progress = elapsed / decayDuration;
 
           if (progress < 1) {
-            const currentOpacity = initialOpacity * (1 - progress);
+            // イージング関数を追加してよりスムーズな減衰を実現
+            const easeOutProgress = 1 - Math.pow(1 - progress, 3);
+            const currentOpacity = initialOpacity * (1 - easeOutProgress);
             filter.style.opacity = Math.max(0, currentOpacity).toString();
             requestAnimationFrame(animate);
           } else {
             filter.style.opacity = '0';
-            filter.classList.remove('visible');
+            setTimeout(() => {
+              filter.classList.remove('visible');
+            }, 500);
           }
         };
 
@@ -721,7 +741,7 @@ import { animationTimings } from '../utils/animation-config';
       });
     });
 
-    const actualImageIndex = closestIndex + 1 + (closestGroupIndex - 1) * 8;
+    const actualImageIndex = closestIndex + 1 + (closestGroupIndex - 1) * 6; // 6枚ごとのグループに変更
     if (currentCenterImageIndex !== actualImageIndex) {
       currentCenterImageIndex = actualImageIndex;
       const description = imageDescriptions[actualImageIndex] || `Image ${actualImageIndex}`;

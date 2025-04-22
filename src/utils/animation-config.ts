@@ -1,11 +1,11 @@
 export const animationTimings = {
   splash: {
-    load01: 100, // 最初のスプラッシュアニメーション
+    load01: 1000, // SVGアニメーション完了後
     load02: 4500, // 2番目のスプラッシュアニメーション
-    load03: 6400, // 3番目のスプラッシュアニメーション
+    load03: 7400, // 3番目のスプラッシュアニメーション
   },
   threeScene: {
-    canvasFadeIn: 6500, // キャンバスのフェードイン開始
+    canvasFadeIn: 7500, // キャンバスのフェードイン開始
     initialAnimation: {
       startDelay: 8000, // 初期アニメーション開始
       duration: 2000, // アニメーション継続時間

@@ -10,12 +10,17 @@
   width: 100%;
   height: 100%;
   z-index: 99999;
+  background: transparent;
 }
 
 .logo {
+  width: 80vw;
+  max-width: 1200px;
   opacity: 0;
   transform: scale(0.95);
-  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+  transition:
+    opacity 0.5s ease-out,
+    transform 0.5s ease-out;
   will-change: transform, opacity;
 }
 
@@ -24,19 +29,35 @@
   transform: scale(1);
 }
 
-.path {
+.basePath {
   fill: none;
-  stroke: #ebebeb;
-  stroke-width: 0.5;
-  stroke-dasharray: 2000;
-  stroke-dashoffset: 2000;
-  transition: stroke-dashoffset 1.5s ease-out, stroke-width 0.5s ease-out,
+  stroke: #fff;
+  stroke-width: 2;
+  stroke-dasharray: 15000;
+  stroke-dashoffset: 15000;
+  transition:
+    stroke-dashoffset 1.5s ease-out,
+    stroke-width 0.5s ease-out,
     fill-opacity 0.5s ease-out;
   will-change: stroke-dashoffset, stroke-width, fill-opacity;
 }
 
-.visible .path {
-  stroke-dashoffset: calc(2000 - (var(--scroll-progress) * 20));
-  stroke-width: calc(0.5 + (var(--scroll-progress) * 0.01));
+.maskPath {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 34;
+  stroke-dasharray: 15000;
+  stroke-dashoffset: 15000;
+  transition: stroke-dashoffset 1.5s ease-out;
+  will-change: stroke-dashoffset;
+}
+
+.visible .basePath {
+  stroke-dashoffset: calc(15000 - (var(--scroll-progress) * 150));
+  stroke-width: calc(2 + (var(--scroll-progress) * 0.02));
   fill-opacity: calc(var(--scroll-progress) / 100);
+}
+
+.visible .maskPath {
+  stroke-dashoffset: calc(15000 - (var(--scroll-progress) * 150));
 }

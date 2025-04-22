@@ -11,7 +11,7 @@ $splashDelay: 3.8s;
 .body {
   &.load01 {
     .splash__copy {
-      clip-path: inset(0 0 0 100%);
+      clip-path: inset(0 0 0 0);
     }
   }
   &.load02 {
@@ -20,6 +20,8 @@ $splashDelay: 3.8s;
     }
   }
   &.load03 {
+    .splash__copy {
+    }
     .head__area .logo__type {
       filter: brightness(1) grayscale(0) invert(0);
     }
@@ -68,16 +70,15 @@ $splashDelay: 3.8s;
   .splash__copy {
     position: absolute;
     left: 50%;
-    top: 45%;
-    transform: translate(-50%, -50%);
+    bottom: 30px;
+    transform: translate(-50%, 0%);
     transform-origin: left top;
     width: calc(100% - 60px);
-    max-width: 1024px;
+
     z-index: 1001;
-    clip-path: inset(0 0 0 0);
-    transition: 0.5s ease-in-out 2.4s;
-    @include smp {
-    }
+    clip-path: inset(0 100% 0 0);
+
+    transition: 0.5s ease-in-out 0s;
   }
 
   h1 {
@@ -114,7 +115,7 @@ $splashDelay: 3.8s;
       top: auto;
       bottom: 20px;
       gap: 0;
-
+      display: none;
       .label__text {
         font-size: 10px;
         opacity: 0.7;
@@ -247,7 +248,7 @@ $splashDelay: 3.8s;
       width: 100vw;
       justify-content: space-between;
       @include smp {
-        width: 200vw;
+        width: 350vw;
       }
 
       p {
@@ -257,13 +258,13 @@ $splashDelay: 3.8s;
         font-weight: 500;
         letter-spacing: 0;
         scale: 0.8;
-        width: fit-content;
+        width: 180px;
         clip-path: inset(0 100% 0 0);
-        animation: clipIn 0.3s ease-in-out forwards 1;
+        animation: clipIn 0.3s ease-in-out forwards 1.5;
 
         @for $i from 1 through 33 {
           &:nth-of-type(#{$i}) {
-            animation-delay: #{6.3 + ($i * 0.1)}s;
+            animation-delay: #{8 + ($i * 0.1)}s;
           }
         }
         @media (min-width: 768px) {
@@ -356,9 +357,9 @@ $splashDelay: 3.8s;
   bottom: 0;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  animation: fadeInAnm 0.6s ease-in-out 6.5s forwards 1;
+  animation: fadeInAnm 0.6s ease-in-out 8.5s forwards 1;
   @media (min-width: 768px) {
-    animation: fadeInAnmPC 0.6s ease-in-out 6.5s forwards 1;
+    animation: fadeInAnmPC 0.6s ease-in-out 8.5s forwards 1;
   }
   @media (min-width: 768px) {
   }

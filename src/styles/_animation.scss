@@ -223,3 +223,21 @@
     font-weight: 100;
   }
 }
+
+// 筆書きアニメーション用のスタイル
+.brush-stroke {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: draw 2s cubic-bezier(0.645, 0.045, 0.355, 1) forwards;
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+// 筆のような質感を表現するためのフィルター
+.brush-texture {
+  filter: url(#brush-filter);
+}
