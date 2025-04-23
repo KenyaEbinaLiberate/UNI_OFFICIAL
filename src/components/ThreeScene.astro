@@ -32,9 +32,13 @@ import { animationTimings } from '../utils/animation-config';
     opacity: 0;
     visibility: hidden;
     transition:
-      opacity 1.5s ease-out,
+      opacity 0.5s ease-out,
       visibility 0s linear 0s;
     clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    /* レンダリングレイヤーを強制的に作成 */
+    will-change: opacity, visibility;
+    /* GPUアクセラレーションを強制 */
+    transform: translateZ(0);
   }
 
   .canvas-layer.visible {
@@ -134,6 +138,126 @@ import { animationTimings } from '../utils/animation-config';
 
   declare const window: ExtendedWindow;
 
+  document.addEventListener('DOMContentLoaded', () => {
+    // 初期化する変数を最初に宣言
+    let canvases: Record<string, HTMLCanvasElement> = {};
+    let renderers: Record<string, THREE.WebGLRenderer> = {};
+    let scenes: Record<string, THREE.Scene> = {};
+    let camera: THREE.PerspectiveCamera | null = null;
+
+    // 画像の事前読み込み
+    const imagesToPreload = [];
+
+    // 各スライド用の画像をプリロード（低解像度と高解像度の両方）
+    for (let i = 1; i <= 24; i++) {
+      // 低解像度画像
+      const lowResPromise = new Promise<void>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve();
+        img.onerror = (error: unknown) => {
+          console.warn(`Error preloading low-res image ${i}:`, error);
+          resolve(); // エラーでも続行
+        };
+        img.src = `/img${i}-low.webp`;
+      });
+
+      // 高解像度画像
+      const highResPromise = new Promise<void>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve();
+        img.onerror = (error: unknown) => {
+          console.warn(`Error preloading high-res image ${i}:`, error);
+          resolve(); // エラーでも続行
+        };
+        img.src = `/img${i}.webp`;
+      });
+
+      imagesToPreload.push(lowResPromise, highResPromise);
+    }
+
+    // mediaQueryListenerを追加
+    const mediaQueryListener = () => {
+      console.log('Media query change detected - forcing canvas visibility check');
+      const canvas1 = document.getElementById('canvas1') as HTMLCanvasElement;
+      if (canvas1 && window.getComputedStyle(canvas1).opacity === '0') {
+        console.warn('Canvas not visible after media query change, forcing visibility');
+        canvas1.classList.add('visible');
+        canvas1.style.opacity = '1';
+
+        // 全てのレンダラーで再レンダリングを強制
+        if (Object.keys(renderers).length > 0 && camera && Object.keys(scenes).length > 0) {
+          Object.values(renderers).forEach((renderer, index) => {
+            const sceneKey = `scene${index + 1}` as keyof typeof scenes;
+            if (scenes[sceneKey]) {
+              renderer.render(scenes[sceneKey], camera as THREE.PerspectiveCamera);
+            }
+          });
+        }
+      }
+    };
+
+    // メディアクエリのリスナーを設定
+    const mediaQueries = [
+      window.matchMedia('(min-width: 768px)'),
+      window.matchMedia('(min-width: 1024px)'),
+      window.matchMedia('(min-width: 1280px)'),
+      window.matchMedia('(orientation: portrait)'),
+      window.matchMedia('(orientation: landscape)'),
+    ];
+
+    mediaQueries.forEach(mq => {
+      // 現代的なブラウザ用
+      if (typeof mq.addEventListener === 'function') {
+        mq.addEventListener('change', mediaQueryListener);
+      }
+      // 古いブラウザ用のフォールバック
+      else if (typeof mq.addListener === 'function') {
+        mq.addListener(mediaQueryListener);
+      }
+    });
+
+    // 画像のプリロードが完了したら初期化を実行
+    Promise.all(imagesToPreload)
+      .then(() => {
+        console.log('All images preloaded successfully');
+        const canvas1 = document.getElementById('canvas1') as HTMLCanvasElement;
+        const canvas2 = document.getElementById('canvas2') as HTMLCanvasElement;
+        const canvas3 = document.getElementById('canvas3') as HTMLCanvasElement;
+        const canvas4 = document.getElementById('canvas4') as HTMLCanvasElement;
+
+        // すべてのキャンバスが存在することを確認
+        if (canvas1 && canvas2 && canvas3 && canvas4) {
+          canvases = { canvas1, canvas2, canvas3, canvas4 };
+          initializeThreeScene();
+        } else {
+          console.error('Some canvas elements are missing!');
+          // 存在するキャンバスだけでも初期化を試みる
+          canvases = {
+            canvas1: canvas1 || document.createElement('canvas'),
+            canvas2: canvas2 || document.createElement('canvas'),
+            canvas3: canvas3 || document.createElement('canvas'),
+            canvas4: canvas4 || document.createElement('canvas'),
+          };
+          initializeThreeScene();
+        }
+      })
+      .catch(error => {
+        console.error('Error during image preloading:', error);
+        // エラーが発生しても初期化を試みる
+        const canvas1 = document.getElementById('canvas1') as HTMLCanvasElement;
+        const canvas2 = document.getElementById('canvas2') as HTMLCanvasElement;
+        const canvas3 = document.getElementById('canvas3') as HTMLCanvasElement;
+        const canvas4 = document.getElementById('canvas4') as HTMLCanvasElement;
+
+        if (canvas1 && canvas2 && canvas3 && canvas4) {
+          canvases = { canvas1, canvas2, canvas3, canvas4 };
+          initializeThreeScene();
+        } else {
+          console.error('Some canvas elements are missing!');
+        }
+      });
+  });
+
   // キャンバス要素の取得
   const canvases = {
     canvas1: document.getElementById('canvas1') as HTMLCanvasElement,
@@ -146,6 +270,12 @@ import { animationTimings } from '../utils/animation-config';
     throw new Error('Canvas elements not found');
   }
 
+  // すべてのキャンバスを一度表示状態にする（CSSの非表示を上書き）
+  Object.values(canvases).forEach(canvas => {
+    canvas.style.opacity = '0';
+    canvas.style.visibility = 'visible';
+  });
+
   const idleMessageElement = document.querySelector('.idle-message') as HTMLElement;
   const currentTimeElement = document.querySelector('.current-time') as HTMLElement;
 
@@ -154,138 +284,180 @@ import { animationTimings } from '../utils/animation-config';
   let isIdle = false;
   const IDLE_TIMEOUT = 600000; // 10分
 
-  // 各キャンバスのレンダラーを作成
-  const renderers = {
-    renderer1: new THREE.WebGLRenderer({
-      canvas: canvases.canvas1,
-      antialias: true,
-      preserveDrawingBuffer: true,
-    }),
-    renderer2: new THREE.WebGLRenderer({
-      canvas: canvases.canvas2,
-      antialias: true,
-      preserveDrawingBuffer: true,
-    }),
-    renderer3: new THREE.WebGLRenderer({
-      canvas: canvases.canvas3,
-      antialias: true,
-      preserveDrawingBuffer: true,
-    }),
-    renderer4: new THREE.WebGLRenderer({
-      canvas: canvases.canvas4,
-      antialias: true,
-      preserveDrawingBuffer: true,
-    }),
-  };
+  // メインの初期化関数
+  function initializeThreeScene() {
+    // 各キャンバスのレンダラーを作成
+    const renderers = {
+      renderer1: new THREE.WebGLRenderer({
+        canvas: canvases.canvas1,
+        antialias: true,
+        preserveDrawingBuffer: true,
+      }),
+      renderer2: new THREE.WebGLRenderer({
+        canvas: canvases.canvas2,
+        antialias: true,
+        preserveDrawingBuffer: true,
+      }),
+      renderer3: new THREE.WebGLRenderer({
+        canvas: canvases.canvas3,
+        antialias: true,
+        preserveDrawingBuffer: true,
+      }),
+      renderer4: new THREE.WebGLRenderer({
+        canvas: canvases.canvas4,
+        antialias: true,
+        preserveDrawingBuffer: true,
+      }),
+    };
 
-  // レンダラーの共通設定
-  Object.values(renderers).forEach(renderer => {
-    renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
-    renderer.toneMapping = THREE.NoToneMapping;
-  });
-
-  // シーンの作成
-  const scenes = {
-    scene1: new THREE.Scene(),
-    scene2: new THREE.Scene(),
-    scene3: new THREE.Scene(),
-    scene4: new THREE.Scene(),
-  };
-
-  // シーンの背景色設定
-  Object.values(scenes).forEach(scene => {
-    scene.background = new THREE.Color(0xeeeeee);
-  });
-
-  // カメラの作成
-  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-  camera.position.z = 5;
-
-  // レスポンシブ対応の関数
-  const updateRendererSize = () => {
+    // レンダラーの共通設定
     Object.values(renderers).forEach(renderer => {
-      const canvas = renderer.domElement;
+      renderer.outputColorSpace = THREE.LinearSRGBColorSpace;
+      renderer.toneMapping = THREE.NoToneMapping;
+    });
+
+    // シーンの作成
+    const scenes = {
+      scene1: new THREE.Scene(),
+      scene2: new THREE.Scene(),
+      scene3: new THREE.Scene(),
+      scene4: new THREE.Scene(),
+    };
+
+    // シーンの背景色設定
+    Object.values(scenes).forEach(scene => {
+      scene.background = new THREE.Color(0xeeeeee);
+    });
+
+    // カメラの作成
+    const camera = new THREE.PerspectiveCamera(
+      45,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      100
+    );
+    camera.position.z = 5;
+
+    // レスポンシブ対応の関数
+    const updateRendererSize = () => {
+      Object.values(renderers).forEach(renderer => {
+        const canvas = renderer.domElement;
+        const computedStyle = window.getComputedStyle(canvas);
+        const width = parseInt(computedStyle.width);
+        const height = parseInt(computedStyle.height);
+
+        renderer.setSize(width, height, false);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      });
+
+      // カメラのアスペクト比を画面サイズに合わせる
+      const canvas = canvases.canvas1;
       const computedStyle = window.getComputedStyle(canvas);
       const width = parseInt(computedStyle.width);
       const height = parseInt(computedStyle.height);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    };
 
-      renderer.setSize(width, height, false);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    // 初期設定
+    updateRendererSize();
+
+    // リサイズイベントの設定
+    window.addEventListener('resize', () => {
+      updateRendererSize();
+      // スライドのサイズも更新
+      slideSize = calculateSlideSize(camera);
+      updateSlidesSize();
     });
 
-    // カメラのアスペクト比を画面サイズに合わせる
-    const canvas = canvases.canvas1;
-    const computedStyle = window.getComputedStyle(canvas);
-    const width = parseInt(computedStyle.width);
-    const height = parseInt(computedStyle.height);
-    camera.aspect = width / height;
-    camera.updateProjectionMatrix();
-  };
+    let slideSize = calculateSlideSize(camera);
+    const gap = 0;
+    const slideCount = 6; // 各キャンバスのスライド数を6枚に変更
+    const imagesCount = 24; // 全画像数（6枚 × 4キャンバス）
+    const totalWidth = slideCount * slideSize.width;
+    const slideUnit = slideSize.width;
 
-  // 初期設定
-  updateRendererSize();
+    // 各シーンのスライド配列
+    const slidesGroups = {
+      slides1: [] as SlideInterface[],
+      slides2: [] as SlideInterface[],
+      slides3: [] as SlideInterface[],
+      slides4: [] as SlideInterface[],
+    };
 
-  // リサイズイベントの設定
-  window.addEventListener('resize', () => {
-    updateRendererSize();
-    // スライドのサイズも更新
-    slideSize = calculateSlideSize(camera);
-    updateSlidesSize();
-  });
+    let currentPosition = 0;
+    let targetPosition = 0;
+    let isScrolling = false;
+    let autoScrollSpeed = 0;
+    let lastTime = 0;
+    let touchStartX = 0;
+    let touchLastX = 0;
+    let prevPosition = 0;
+    let lastUpdateTime = performance.now();
 
-  let slideSize = calculateSlideSize(camera);
-  const gap = 0;
-  const slideCount = 6; // 各キャンバスのスライド数を6枚に変更
-  const imagesCount = 24; // 全画像数（6枚 × 4キャンバス）
-  const totalWidth = slideCount * slideSize.width;
-  const slideUnit = slideSize.width;
+    let currentDistortionFactor = 0;
+    let targetDistortionFactor = 0;
+    let peakVelocity = 0;
+    let velocityHistory = [0, 0, 0, 0, 0];
 
-  // 各シーンのスライド配列
-  const slidesGroups = {
-    slides1: [] as SlideInterface[],
-    slides2: [] as SlideInterface[],
-    slides3: [] as SlideInterface[],
-    slides4: [] as SlideInterface[],
-  };
+    let isUserInteracting = false;
+    let lastInteractionTime = 0;
 
-  let currentPosition = 0;
-  let targetPosition = 0;
-  let isScrolling = false;
-  let autoScrollSpeed = 0;
-  let lastTime = 0;
-  let touchStartX = 0;
-  let touchLastX = 0;
-  let prevPosition = 0;
-  let lastUpdateTime = performance.now();
+    const correctImageColor = (texture: THREE.Texture): THREE.Texture => {
+      texture.colorSpace = THREE.LinearSRGBColorSpace;
+      return texture;
+    };
 
-  let currentDistortionFactor = 0;
-  let targetDistortionFactor = 0;
-  let peakVelocity = 0;
-  let velocityHistory = [0, 0, 0, 0, 0];
+    // 画像の読み込み
+    const loadTexture = (index: number, material: THREE.ShaderMaterial) => {
+      // フォールバック用のダミーテクスチャを作成（単色の青）
+      const fallbackTexture = new THREE.Texture();
+      const fallbackCanvas = document.createElement('canvas');
+      fallbackCanvas.width = 100;
+      fallbackCanvas.height = 100;
+      const ctx = fallbackCanvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#0000ff';
+        ctx.fillRect(0, 0, 100, 100);
+        fallbackTexture.image = fallbackCanvas;
+        fallbackTexture.needsUpdate = true;
+        fallbackTexture.colorSpace = THREE.LinearSRGBColorSpace;
+      }
 
-  let isUserInteracting = false;
-  let lastInteractionTime = 0;
+      // 一定時間後にレンダリングを強制するためのタイマー
+      const fallbackTimer = setTimeout(() => {
+        console.warn(`Fallback timer triggered for image ${index}`);
+        if (!material.uniforms.uTexture.value) {
+          material.uniforms.uTexture.value = fallbackTexture;
+          material.needsUpdate = true;
 
-  const correctImageColor = (texture: THREE.Texture): THREE.Texture => {
-    texture.colorSpace = THREE.LinearSRGBColorSpace;
-    return texture;
-  };
+          // フォールバックで全体を表示
+          if (index <= 6) {
+            canvases.canvas1.classList.add('visible');
+            canvases.canvas1.style.opacity = '1';
+          }
+        }
+      }, 2000); // 2秒後にフォールバック
 
-  // 画像の読み込み
-  const loadTexture = (index: number, material: THREE.ShaderMaterial) => {
-    // 低解像度版を先に読み込む
-    new THREE.TextureLoader().load(
-      `/img${index}-low.webp`,
-      lowResTexture => {
-        lowResTexture.colorSpace = THREE.LinearSRGBColorSpace;
-        material.uniforms.uTexture.value = lowResTexture;
-        material.needsUpdate = true;
+      // プリロード用の変数を作成
+      const highResImage = new Image();
+      highResImage.src = `/img${index}.webp`;
 
-        // キャンバスが表示された時点で高解像度画像を読み込む
-        const loadHighRes = () => {
+      // 低解像度版を先に読み込む
+      new THREE.TextureLoader().load(
+        `/img${index}-low.webp`,
+        (lowResTexture: THREE.Texture) => {
+          lowResTexture.colorSpace = THREE.LinearSRGBColorSpace;
+          material.uniforms.uTexture.value = lowResTexture;
+          material.needsUpdate = true;
+
+          // フォールバックタイマーをクリア
+          clearTimeout(fallbackTimer);
+
+          // 直接高解像度画像を読み込む
           new THREE.TextureLoader().load(
             `/img${index}.webp`,
-            highResTexture => {
+            (highResTexture: THREE.Texture) => {
               highResTexture.colorSpace = THREE.LinearSRGBColorSpace;
               material.uniforms.uTexture.value = highResTexture;
               material.needsUpdate = true;
@@ -314,274 +486,241 @@ import { animationTimings } from '../utils/animation-config';
               }
             },
             undefined,
-            error => console.warn('Error loading high-res texture:', error)
+            (error: unknown) => {
+              console.warn('Error loading high-res texture:', error);
+              // 高解像度画像の読み込みに失敗した場合でも低解像度は表示されているはず
+            }
           );
-        };
-
-        // キャンバスの表示状態を監視
-        const observer = new IntersectionObserver(
-          entries => {
-            entries.forEach(entry => {
-              if (entry.isIntersecting) {
-                loadHighRes();
-                observer.disconnect();
-              }
-            });
-          },
-          { threshold: 0.1 }
-        );
-
-        // キャンバス要素を監視
-        const canvasElement = canvases[`canvas${Math.ceil(index / 6)}` as keyof typeof canvases];
-        if (canvasElement) {
-          observer.observe(canvasElement);
+        },
+        undefined,
+        (error: unknown) => {
+          console.warn('Error loading low-res texture:', error);
+          // 低解像度の読み込みに失敗した場合はフォールバックを使用
+          material.uniforms.uTexture.value = fallbackTexture;
+          material.needsUpdate = true;
+          clearTimeout(fallbackTimer);
         }
-      },
-      undefined,
-      error => console.warn('Error loading low-res texture:', error)
-    );
-  };
-
-  // スライド作成関数を更新
-  const createSlide = (index: number, groupIndex: number) => {
-    const geometry = new THREE.PlaneGeometry(slideSize.width, slideSize.height, 32, 32);
-    const material = new THREE.ShaderMaterial({
-      vertexShader,
-      fragmentShader,
-      uniforms: {
-        uTexture: { value: null },
-        uTime: { value: 0 },
-        uSpeed: { value: settings.liquidEffect.speed },
-        uDistortionStrength: { value: 0.0 },
-      },
-      transparent: true,
-    });
-
-    const mesh = new THREE.Mesh(geometry, material) as SlideInterface;
-
-    // 各キャンバスの画像グループに対応するインデックスを計算
-    const imageIndex = (groupIndex - 1) * 6 + index + 1;
-
-    mesh.userData = {
-      originalVertices: Array.from(geometry.attributes.position.array),
-      targetX: index * (slideSize.width + gap),
-      currentX: index * (slideSize.width + gap),
-      index: index,
-      currentImageIndex: imageIndex,
-      nextTexture: null,
-      isTransitioning: false,
-      transitionProgress: 0,
-      targetPosition: 0,
-      currentPosition: 0,
-      visible: true,
+      );
     };
 
-    // 対応する画像グループの画像を読み込み
-    loadTexture(imageIndex, material);
+    // スライド作成関数を更新
+    const createSlide = (index: number, groupIndex: number) => {
+      const geometry = new THREE.PlaneGeometry(slideSize.width, slideSize.height, 32, 32);
+      const material = new THREE.ShaderMaterial({
+        vertexShader,
+        fragmentShader,
+        uniforms: {
+          uTexture: { value: null },
+          uTime: { value: 0 },
+          uSpeed: { value: settings.liquidEffect.speed },
+          uDistortionStrength: { value: 0.0 },
+        },
+        transparent: true,
+      });
 
-    // 対応するキャンバスのシーンにスライドを追加
-    const targetSlides = slidesGroups[`slides${groupIndex}` as keyof typeof slidesGroups];
-    targetSlides.push(mesh);
-    scenes[`scene${groupIndex}` as keyof typeof scenes].add(mesh);
-  };
+      const mesh = new THREE.Mesh(geometry, material) as SlideInterface;
 
-  // 各キャンバスのスライドを作成（6枚ずつ）
-  for (let groupIndex = 1; groupIndex <= 4; groupIndex++) {
-    for (let i = 0; i < 6; i++) {
-      // slideCountではなく固定で6枚
-      createSlide(i, groupIndex);
-    }
-  }
+      // 各キャンバスの画像グループに対応するインデックスを計算
+      const imageIndex = (groupIndex - 1) * 6 + index + 1;
 
-  // キャンバス切り替えの管理を更新
-  let currentCanvasIndex = 1;
-  let isTransitioning = false;
+      mesh.userData = {
+        originalVertices: Array.from(geometry.attributes.position.array),
+        targetX: index * (slideSize.width + gap),
+        currentX: index * (slideSize.width + gap),
+        index: index,
+        currentImageIndex: imageIndex,
+        nextTexture: null,
+        isTransitioning: false,
+        transitionProgress: 0,
+        targetPosition: 0,
+        currentPosition: 0,
+        visible: true,
+      };
 
-  // 自動スライド設定
-  let autoSlideInterval: ReturnType<typeof setInterval> | null = null;
-  const startAutoSlide = () => {
-    if (autoSlideInterval) return;
-    autoSlideInterval = setInterval(() => {
-      if (!isUserInteracting) {
-        targetPosition -= 0.001;
-        targetDistortionFactor = 0.01; // 歪み効果もさらに小さく
+      // 対応する画像グループの画像を読み込み
+      loadTexture(imageIndex, material);
+
+      // 対応するキャンバスのシーンにスライドを追加
+      const targetSlides = slidesGroups[`slides${groupIndex}` as keyof typeof slidesGroups];
+      targetSlides.push(mesh);
+      scenes[`scene${groupIndex}` as keyof typeof scenes].add(mesh);
+    };
+
+    // 各キャンバスのスライドを作成（6枚ずつ）
+    for (let groupIndex = 1; groupIndex <= 4; groupIndex++) {
+      for (let i = 0; i < 6; i++) {
+        // slideCountではなく固定で6枚
+        createSlide(i, groupIndex);
       }
-    }, 12); // より頻繁な更新（約60FPS）
-  };
-
-  const stopAutoSlide = () => {
-    if (autoSlideInterval) {
-      clearInterval(autoSlideInterval);
-      autoSlideInterval = null;
     }
-  };
 
-  // switchCanvas関数を更新して自動スライドを維持する
-  const switchCanvas = (direction: 'next' | 'prev') => {
-    if (isTransitioning) return;
-    isTransitioning = true;
+    // キャンバス切り替えの管理を更新
+    let currentCanvasIndex = 1;
+    let isTransitioning = false;
 
-    const currentCanvas = canvases[`canvas${currentCanvasIndex}` as keyof typeof canvases];
-    const nextCanvasIndex =
-      direction === 'next' ? (currentCanvasIndex % 4) + 1 : ((currentCanvasIndex - 2 + 4) % 4) + 1;
-    const nextCanvas = canvases[`canvas${nextCanvasIndex}` as keyof typeof canvases];
-    const mask = document.querySelector('.canvas__mask') as HTMLElement;
+    // 自動スライド設定
+    let autoSlideInterval: ReturnType<typeof setInterval> | null = null;
+    const startAutoSlide = () => {
+      if (autoSlideInterval) return;
+      autoSlideInterval = setInterval(() => {
+        if (!isUserInteracting) {
+          targetPosition -= 0.001;
+          targetDistortionFactor = 0.01; // 歪み効果もさらに小さく
+        }
+      }, 12); // より頻繁な更新（約60FPS）
+    };
 
-    // パフォーマンスメトリクスの取得
-    const fps = 1000 / (performance.now() - lastUpdateTime);
-    const isLowPerformance = fps < 30;
+    const stopAutoSlide = () => {
+      if (autoSlideInterval) {
+        clearInterval(autoSlideInterval);
+        autoSlideInterval = null;
+      }
+    };
 
-    // 現在のキャンバスのスライドをリセット
-    currentPosition = 0;
-    targetPosition = 0;
+    // switchCanvas関数を更新して自動スライドを維持する
+    const switchCanvas = (direction: 'next' | 'prev') => {
+      if (isTransitioning) return;
+      isTransitioning = true;
 
-    // 自動スライドを一時停止
-    const wasAutoSliding = autoSlideInterval !== null;
-    stopAutoSlide();
+      const currentCanvas = canvases[`canvas${currentCanvasIndex}` as keyof typeof canvases];
+      const nextCanvasIndex =
+        direction === 'next'
+          ? (currentCanvasIndex % 4) + 1
+          : ((currentCanvasIndex - 2 + 4) % 4) + 1;
+      const nextCanvas = canvases[`canvas${nextCanvasIndex}` as keyof typeof canvases];
+      const mask = document.querySelector('.canvas__mask') as HTMLElement;
 
-    // マスクアニメーションを開始
-    mask.classList.add('active');
+      // パフォーマンスメトリクスの取得
+      const fps = 1000 / (performance.now() - lastUpdateTime);
+      const isLowPerformance = fps < 30;
 
-    // アニメーション時間をパフォーマンスと画面サイズに応じて動的に調整
-    const baseTransitionDuration = window.innerWidth >= 768 ? 700 : 350;
-    const transitionDuration = isLowPerformance
-      ? baseTransitionDuration * 1.5
-      : baseTransitionDuration;
-    const halfDuration = transitionDuration / 2;
+      // 現在のキャンバスのスライドをリセット
+      currentPosition = 0;
+      targetPosition = 0;
 
-    // 次のキャンバスの画像を事前に高解像度で読み込む
-    const nextGroupSlides = slidesGroups[`slides${nextCanvasIndex}` as keyof typeof slidesGroups];
-    nextGroupSlides.forEach(slide => {
-      const material = slide.material as THREE.ShaderMaterial;
-      const imageIndex = slide.userData.currentImageIndex;
-      if (material.uniforms.uTexture.value?.image?.src?.includes('-low.webp')) {
-        new THREE.TextureLoader().load(`/img${imageIndex}.webp`, highResTexture => {
-          highResTexture.colorSpace = THREE.LinearSRGBColorSpace;
-          material.uniforms.uTexture.value = highResTexture;
-          material.needsUpdate = true;
+      // 自動スライドを一時停止
+      const wasAutoSliding = autoSlideInterval !== null;
+      stopAutoSlide();
+
+      // マスクアニメーションを開始
+      mask.classList.add('active');
+
+      // アニメーション時間をパフォーマンスと画面サイズに応じて動的に調整
+      const baseTransitionDuration = window.innerWidth >= 768 ? 700 : 350;
+      const transitionDuration = isLowPerformance
+        ? baseTransitionDuration * 1.5
+        : baseTransitionDuration;
+      const halfDuration = transitionDuration / 2;
+
+      // 次のキャンバスの画像を事前に高解像度で読み込む
+      const nextGroupSlides = slidesGroups[`slides${nextCanvasIndex}` as keyof typeof slidesGroups];
+      nextGroupSlides.forEach(slide => {
+        const material = slide.material as THREE.ShaderMaterial;
+        const imageIndex = slide.userData.currentImageIndex;
+        if (material.uniforms.uTexture.value?.image?.src?.includes('-low.webp')) {
+          new THREE.TextureLoader().load(
+            `/img${imageIndex}.webp`,
+            (highResTexture: THREE.Texture) => {
+              highResTexture.colorSpace = THREE.LinearSRGBColorSpace;
+              material.uniforms.uTexture.value = highResTexture;
+              material.needsUpdate = true;
+            }
+          );
+        }
+      });
+
+      // マスクアニメーションの途中でキャンバスを切り替え
+      setTimeout(() => {
+        nextCanvas.style.visibility = 'visible';
+        nextCanvas.style.opacity = '0';
+
+        requestAnimationFrame(() => {
+          currentCanvas.style.opacity = '0';
+          currentCanvas.style.visibility = 'hidden';
+          nextCanvas.style.opacity = '1';
         });
+      }, halfDuration);
+
+      // マスクアニメーション終了時にクラスを削除し、自動スライドを再開
+      setTimeout(() => {
+        mask.classList.remove('active');
+        isTransitioning = false;
+
+        // トランジション完了後に自動スライドを再開
+        if (wasAutoSliding || !isUserInteracting) {
+          startAutoSlide();
+        }
+      }, transitionDuration);
+
+      currentCanvasIndex = nextCanvasIndex;
+      lastUpdateTime = performance.now();
+    };
+
+    // ナビゲーションボタンのイベントリスナーを追加
+    document.querySelector('.nav-button.next')?.addEventListener('click', () => {
+      switchCanvas('next');
+    });
+
+    document.querySelector('.nav-button.prev')?.addEventListener('click', () => {
+      switchCanvas('prev');
+    });
+
+    // キーボードナビゲーションのサポート
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') {
+        switchCanvas('next');
+      } else if (e.key === 'ArrowLeft') {
+        switchCanvas('prev');
       }
     });
 
-    // マスクアニメーションの途中でキャンバスを切り替え
-    setTimeout(() => {
-      nextCanvas.style.visibility = 'visible';
-      nextCanvas.style.opacity = '0';
+    // アニメーション関数を更新
+    const animate = (time: number): void => {
+      requestAnimationFrame(animate);
 
-      requestAnimationFrame(() => {
-        currentCanvas.style.opacity = '0';
-        currentCanvas.style.visibility = 'hidden';
-        nextCanvas.style.opacity = '1';
-      });
-    }, halfDuration);
+      const deltaTime = lastTime ? (time - lastTime) / 1000 : 0.016;
+      lastTime = time;
 
-    // マスクアニメーション終了時にクラスを削除し、自動スライドを再開
-    setTimeout(() => {
-      mask.classList.remove('active');
-      isTransitioning = false;
+      // スライドの移動速度を計算（ピクセル/秒）
+      const currentSpeed = Math.abs(currentPosition - prevPosition) / deltaTime;
+      prevPosition = currentPosition;
 
-      // トランジション完了後に自動スライドを再開
-      if (wasAutoSliding || !isUserInteracting) {
-        startAutoSlide();
+      // 速度の履歴を更新（より短いウィンドウ）
+      velocityHistory.push(currentSpeed);
+      if (velocityHistory.length > 3) velocityHistory.shift();
+
+      // 平均速度を計算
+      const averageSpeed = velocityHistory.reduce((a, b) => a + b, 0) / velocityHistory.length;
+
+      // フィルターの不透明度を速度に基づいて更新
+      const filter = document.querySelector('.img__filter') as HTMLElement;
+      if (filter) {
+        // 速度を直接的に不透明度にマッピング
+        const normalizedSpeed = Math.min(averageSpeed / 1, 5);
+
+        // 現在の不透明度を取得
+        const currentOpacity = parseFloat(filter.style.opacity) || 0;
+
+        // より素早い補間（0.1）で目標の不透明度に向かって変化
+        const smoothedOpacity = THREE.MathUtils.lerp(currentOpacity, normalizedSpeed, 0.1);
+
+        // フィルターの表示/非表示を制御
+        if (smoothedOpacity > 0.01) {
+          filter.classList.add('visible');
+          filter.classList.add('fade-in');
+          filter.style.opacity = smoothedOpacity.toString();
+        } else {
+          filter.classList.remove('fade-in');
+          filter.style.opacity = '0';
+          setTimeout(() => {
+            if (parseFloat(filter.style.opacity) === 0) {
+              filter.classList.remove('visible');
+            }
+          }, 1000);
+        }
       }
-    }, transitionDuration);
 
-    currentCanvasIndex = nextCanvasIndex;
-    lastUpdateTime = performance.now();
-  };
-
-  // ナビゲーションボタンのイベントリスナーを追加
-  document.querySelector('.nav-button.next')?.addEventListener('click', () => {
-    switchCanvas('next');
-  });
-
-  document.querySelector('.nav-button.prev')?.addEventListener('click', () => {
-    switchCanvas('prev');
-  });
-
-  // キーボードナビゲーションのサポート
-  window.addEventListener('keydown', e => {
-    if (e.key === 'ArrowRight') {
-      switchCanvas('next');
-    } else if (e.key === 'ArrowLeft') {
-      switchCanvas('prev');
-    }
-  });
-
-  // 初期表示の設定
-  setTimeout(() => {
-    canvases.canvas1.classList.add('visible');
-    document.querySelector('.img__name')?.classList.add('visible');
-
-    // 初期スライドインアニメーション
-    targetPosition = -slideUnit * 6;
-    targetDistortionFactor = 1;
-    const filter = document.querySelector('.img__filter') as HTMLElement;
-    if (filter) {
-      filter.classList.add('visible');
-      filter.style.opacity = '0.5';
-      setTimeout(() => {
-        filter.style.opacity = '0';
-        setTimeout(() => {
-          filter.classList.remove('visible');
-        }, 200);
-      }, 1000);
-    }
-  }, animationTimings.threeScene.canvasFadeIn);
-
-  // アニメーション関数を更新
-  const animate = (time: number): void => {
-    requestAnimationFrame(animate);
-
-    const deltaTime = lastTime ? (time - lastTime) / 1000 : 0.016;
-    lastTime = time;
-
-    // スライドの移動速度を計算（ピクセル/秒）
-    const currentSpeed = Math.abs(currentPosition - prevPosition) / deltaTime;
-    prevPosition = currentPosition;
-
-    // 速度の履歴を更新（より短いウィンドウ）
-    velocityHistory.push(currentSpeed);
-    if (velocityHistory.length > 3) velocityHistory.shift();
-
-    // 平均速度を計算
-    const averageSpeed = velocityHistory.reduce((a, b) => a + b, 0) / velocityHistory.length;
-
-    // フィルターの不透明度を速度に基づいて更新
-    const filter = document.querySelector('.img__filter') as HTMLElement;
-    if (filter) {
-      // 速度を直接的に不透明度にマッピング
-      const normalizedSpeed = Math.min(averageSpeed / 1, 5);
-
-      // 現在の不透明度を取得
-      const currentOpacity = parseFloat(filter.style.opacity) || 0;
-
-      // より素早い補間（0.1）で目標の不透明度に向かって変化
-      const smoothedOpacity = THREE.MathUtils.lerp(currentOpacity, normalizedSpeed, 0.1);
-
-      // フィルターの表示/非表示を制御
-      if (smoothedOpacity > 0.01) {
-        filter.classList.add('visible');
-        filter.classList.add('fade-in');
-        filter.style.opacity = smoothedOpacity.toString();
-      } else {
-        filter.classList.remove('fade-in');
-        filter.style.opacity = '0';
-        setTimeout(() => {
-          if (parseFloat(filter.style.opacity) === 0) {
-            filter.classList.remove('visible');
-          }
-        }, 1000);
-      }
-    }
-
-    // アニメーションが必要かどうかを判断
-    const isAnimationNeeded =
-      Math.abs(currentPosition - targetPosition) > 0.001 ||
-      Math.abs(currentDistortionFactor - targetDistortionFactor) > 0.001 ||
-      averageSpeed > 0.1;
-
-    if (isAnimationNeeded) {
+      // 各シーンとスライドを更新する
       Object.entries(slidesGroups).forEach(([groupKey, slides]) => {
         const groupIndex = parseInt(groupKey.replace('slides', ''));
         const scene = scenes[`scene${groupIndex}` as keyof typeof scenes];
@@ -626,323 +765,395 @@ import { animationTimings } from '../utils/animation-config';
       currentPosition = THREE.MathUtils.lerp(currentPosition, targetPosition, 0.1);
 
       updateCenterImageIndex();
-    }
-  };
+    };
 
-  // スライドのサイズを更新する関数
-  const updateSlidesSize = () => {
-    const newSize = calculateSlideSize(camera);
-    Object.values(slidesGroups).forEach(slides => {
-      slides.forEach((slide, index) => {
-        const newGeometry = new THREE.PlaneGeometry(newSize.width, newSize.height, 32, 32);
-        slide.geometry.dispose();
-        slide.geometry = newGeometry;
-        slide.userData.originalVertices = Array.from(newGeometry.attributes.position.array);
+    // スライドのサイズを更新する関数
+    const updateSlidesSize = () => {
+      const newSize = calculateSlideSize(camera);
+      Object.values(slidesGroups).forEach(slides => {
+        slides.forEach((slide, index) => {
+          const newGeometry = new THREE.PlaneGeometry(newSize.width, newSize.height, 32, 32);
+          slide.geometry.dispose();
+          slide.geometry = newGeometry;
+          slide.userData.originalVertices = Array.from(newGeometry.attributes.position.array);
 
-        const newTotalWidth = slideCount * newSize.width;
-        slide.position.x = index * newSize.width - newTotalWidth / 2 + currentPosition;
-        slide.userData.targetX = slide.position.x - currentPosition;
-        slide.userData.currentX = slide.position.x;
+          const newTotalWidth = slideCount * newSize.width;
+          slide.position.x = index * newSize.width - newTotalWidth / 2 + currentPosition;
+          slide.userData.targetX = slide.position.x - currentPosition;
+          slide.userData.currentX = slide.position.x;
 
-        const material = slide.material as THREE.ShaderMaterial;
-        const texture = material.uniforms.uTexture.value as THREE.Texture;
+          const material = slide.material as THREE.ShaderMaterial;
+          const texture = material.uniforms.uTexture.value as THREE.Texture;
 
-        if (texture && texture.image) {
-          const imgAspect = texture.image.width / texture.image.height;
-          const slideAspect = newSize.width / newSize.height;
-          const viewportAspect = window.innerWidth / window.innerHeight;
+          if (texture && texture.image) {
+            const imgAspect = texture.image.width / texture.image.height;
+            const slideAspect = newSize.width / newSize.height;
+            const viewportAspect = window.innerWidth / window.innerHeight;
 
-          texture.center.set(0.5, 0.5);
+            texture.center.set(0.5, 0.5);
 
-          // object-fit: coverのような動作を実現
-          if (imgAspect > viewportAspect) {
-            // 画像が画面より横長の場合、高さに合わせてスケーリング
-            const scale = viewportAspect / imgAspect;
-            texture.repeat.set(scale, 1);
-            texture.offset.x = (1 - scale) / 2;
-            texture.offset.y = 0;
-          } else {
-            // 画像が画面より縦長の場合、幅に合わせてスケーリング
-            const scale = imgAspect / viewportAspect;
-            texture.repeat.set(1, scale);
-            texture.offset.y = (1 - scale) / 2;
-            texture.offset.x = 0;
+            // object-fit: coverのような動作を実現
+            if (imgAspect > viewportAspect) {
+              // 画像が画面より横長の場合、高さに合わせてスケーリング
+              const scale = viewportAspect / imgAspect;
+              texture.repeat.set(scale, 1);
+              texture.offset.x = (1 - scale) / 2;
+              texture.offset.y = 0;
+            } else {
+              // 画像が画面より縦長の場合、幅に合わせてスケーリング
+              const scale = imgAspect / viewportAspect;
+              texture.repeat.set(1, scale);
+              texture.offset.y = (1 - scale) / 2;
+              texture.offset.x = 0;
+            }
+
+            texture.wrapS = THREE.ClampToEdgeWrapping;
+            texture.wrapT = THREE.ClampToEdgeWrapping;
           }
-
-          texture.wrapS = THREE.ClampToEdgeWrapping;
-          texture.wrapT = THREE.ClampToEdgeWrapping;
-        }
+        });
       });
-    });
-  };
+    };
 
-  // カーブ更新関数
-  const updateCurve = (
-    mesh: SlideInterface,
-    worldPositionX: number,
-    distortionFactor: number
-  ): void => {
-    const positionAttribute = mesh.geometry.attributes.position;
-    for (let i = 0; i < positionAttribute.count; i++) {
-      positionAttribute.setZ(i, 0);
-    }
-    positionAttribute.needsUpdate = true;
-    mesh.geometry.computeVertexNormals();
-  };
-
-  // イベントリスナーの更新
-  const startUserInteraction = () => {
-    isUserInteracting = true;
-    lastInteractionTime = performance.now();
-    stopAutoSlide();
-  };
-
-  const endUserInteraction = () => {
-    isUserInteracting = false;
-    startAutoSlide();
-  };
-
-  // イベントリスナーを追加
-  window.addEventListener('keydown', e => {
-    if (e.key === 'ArrowLeft') {
-      targetPosition += slideUnit;
-      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 1.6);
-      const filter = document.querySelector('.img__filter') as HTMLElement;
-      filter?.classList.add('visible');
-      if (filter) filter.style.opacity = '0.5';
-    } else if (e.key === 'ArrowRight') {
-      targetPosition -= slideUnit;
-      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 1.6);
-      const filter = document.querySelector('.img__filter') as HTMLElement;
-      filter?.classList.add('visible');
-      if (filter) filter.style.opacity = '0.5';
-    }
-    startUserInteraction();
-  });
-
-  window.addEventListener(
-    'wheel',
-    e => {
-      e.preventDefault();
-      const wheelStrength = Math.abs(e.deltaY) * 1.1;
-      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + wheelStrength);
-      targetPosition -= e.deltaY * settings.wheelSensitivity;
-
-      // フィルターの表示を開始
-      const filter = document.querySelector('.img__filter') as HTMLElement;
-      if (filter) {
-        filter.classList.add('visible');
+    // カーブ更新関数
+    const updateCurve = (
+      mesh: SlideInterface,
+      worldPositionX: number,
+      distortionFactor: number
+    ): void => {
+      const positionAttribute = mesh.geometry.attributes.position;
+      for (let i = 0; i < positionAttribute.count; i++) {
+        positionAttribute.setZ(i, 0);
       }
+      positionAttribute.needsUpdate = true;
+      mesh.geometry.computeVertexNormals();
+    };
 
+    // イベントリスナーの更新
+    const startUserInteraction = () => {
+      isUserInteracting = true;
+      lastInteractionTime = performance.now();
+      stopAutoSlide();
+    };
+
+    const endUserInteraction = () => {
+      isUserInteracting = false;
+      startAutoSlide();
+    };
+
+    // イベントリスナーを追加
+    window.addEventListener('keydown', (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        targetPosition += slideUnit;
+        targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 1.6);
+        const filter = document.querySelector('.img__filter') as HTMLElement;
+        filter?.classList.add('visible');
+        if (filter) filter.style.opacity = '0.5';
+      } else if (e.key === 'ArrowRight') {
+        targetPosition -= slideUnit;
+        targetDistortionFactor = Math.min(1.0, targetDistortionFactor + 1.6);
+        const filter = document.querySelector('.img__filter') as HTMLElement;
+        filter?.classList.add('visible');
+        if (filter) filter.style.opacity = '0.5';
+      }
       startUserInteraction();
-
-      if (window.scrollTimeout) {
-        clearTimeout(window.scrollTimeout);
-      }
-      window.scrollTimeout = setTimeout(() => {
-        endUserInteraction();
-      }, 2000);
-    },
-    { passive: false }
-  );
-
-  window.addEventListener(
-    'touchstart',
-    e => {
-      touchStartX = e.touches[0].clientX;
-      touchLastX = touchStartX;
-      startUserInteraction();
-    },
-    { passive: false }
-  );
-
-  window.addEventListener(
-    'touchmove',
-    e => {
-      e.preventDefault();
-      const touchX = e.touches[0].clientX;
-      const deltaX = touchX - touchLastX;
-      touchLastX = touchX;
-
-      const touchStrength = Math.abs(deltaX) * 2;
-      targetDistortionFactor = Math.min(1.0, targetDistortionFactor + touchStrength);
-      targetPosition -= deltaX * settings.touchSensitivity * 2.5;
-
-      // フィルターの表示を開始
-      const filter = document.querySelector('.img__filter') as HTMLElement;
-      if (filter) {
-        filter.classList.add('visible');
-      }
-    },
-    { passive: false }
-  );
-
-  window.addEventListener('touchend', () => {
-    const velocity = (touchLastX - touchStartX) * 0.0125;
-    if (Math.abs(velocity) > 0.3) {
-      targetDistortionFactor = Math.min(
-        1.0,
-        Math.abs(velocity) * 12.5 * settings.distortionSensitivity
-      );
-
-      // フィルター効果を速度に基づいて設定
-      const filter = document.querySelector('.img__filter') as HTMLElement;
-      if (filter) {
-        filter.classList.add('visible');
-        const normalizedVelocity = Math.min(Math.abs(velocity), 1);
-        const initialOpacity = normalizedVelocity; // 最大値1
-        filter.style.opacity = initialOpacity.toString();
-
-        // 速度に基づいて減衰時間を設定（速いほど長く表示）
-        const decayDuration = Math.min(4000, Math.max(2500, Math.abs(velocity) * 3000));
-
-        // フィルターの不透明度を徐々に減少
-        let startTime = performance.now();
-        const animate = () => {
-          const currentTime = performance.now();
-          const elapsed = currentTime - startTime;
-          const progress = elapsed / decayDuration;
-
-          if (progress < 1) {
-            // イージング関数を追加してよりスムーズな減衰を実現
-            const easeOutProgress = 1 - Math.pow(1 - progress, 3);
-            const currentOpacity = initialOpacity * (1 - easeOutProgress);
-            filter.style.opacity = Math.max(0, currentOpacity).toString();
-            requestAnimationFrame(animate);
-          } else {
-            filter.style.opacity = '0';
-            setTimeout(() => {
-              filter.classList.remove('visible');
-            }, 500);
-          }
-        };
-
-        requestAnimationFrame(animate);
-      }
-    }
-    endUserInteraction();
-  });
-
-  // 画像ごとのテキスト情報を定義
-  const imageDescriptions: { [key: number]: string } = {
-    1: 'FUN IS COOL',
-    2: 'FUN IS COOL',
-    3: 'FUN IS COOL',
-    4: 'FUN IS COOL',
-    5: 'FUN IS COOL',
-    6: 'FUN IS COOL',
-    7: 'FUN IS COOL',
-    8: '08 / 250203 / SEVESKIG',
-    9: '09 / 250203 / SEVESKIG',
-    10: '10 / 250203 / SEVESKIG',
-    11: '11 / 250203 / SEVESKIG',
-    12: '12 / 250203 / SEVESKIG',
-    13: '13 / 250203 / SEVESKIG',
-    14: '14 / 250203 / SEVESKIG',
-    15: '15 / 250203 / SEVESKIG',
-    16: '16 / 2501015 / jisetsu',
-    17: '17 / 251015 / jisetsu',
-    18: '18 / 251015 / jisetsu',
-    19: '19 / 250417 / STORE',
-    20: '20 / 250417 / STORE',
-    21: '21 / 250417 / STORE',
-    22: '22 / 250417 / STORE',
-    23: '23 / 250417 / STORE',
-    24: '24 / 250417 / STORE',
-  };
-
-  const imgNameElement = document.querySelector('.img__name');
-  let currentCenterImageIndex = 0;
-
-  // 中央の画像インデックスを更新
-  const updateCenterImageIndex = () => {
-    if (!imgNameElement) return;
-
-    const centerX = 0;
-    let closestDistance = Infinity;
-    let closestIndex = 0;
-    let closestGroupIndex = 1;
-
-    Object.entries(slidesGroups).forEach(([groupKey, slides], groupIdx) => {
-      slides.forEach((slide, index) => {
-        const distance = Math.abs(slide.position.x);
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closestIndex = index;
-          closestGroupIndex = groupIdx + 1;
-        }
-      });
     });
 
-    const actualImageIndex = closestIndex + 1 + (closestGroupIndex - 1) * 6; // 6枚ごとのグループに変更
-    if (currentCenterImageIndex !== actualImageIndex) {
-      currentCenterImageIndex = actualImageIndex;
-      const description = imageDescriptions[actualImageIndex] || `Image ${actualImageIndex}`;
-      imgNameElement.textContent = description;
-    }
-  };
+    window.addEventListener(
+      'wheel',
+      (e: WheelEvent) => {
+        e.preventDefault();
+        const wheelStrength = Math.abs(e.deltaY) * 1.1;
+        targetDistortionFactor = Math.min(1.0, targetDistortionFactor + wheelStrength);
+        targetPosition -= e.deltaY * settings.wheelSensitivity;
 
-  // アイドル状態の管理関数
-  const startIdleTimer = (): void => {
-    if (idleTimer) clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => {
-      isIdle = true;
-      showIdleEffects();
-    }, IDLE_TIMEOUT);
-  };
+        // フィルターの表示を開始
+        const filter = document.querySelector('.img__filter') as HTMLElement;
+        if (filter) {
+          filter.classList.add('visible');
+        }
 
-  const resetIdleTimer = (): void => {
-    if (isIdle) {
-      hideIdleEffects();
-    }
-    isIdle = false;
+        startUserInteraction();
+
+        if (window.scrollTimeout) {
+          clearTimeout(window.scrollTimeout);
+        }
+        window.scrollTimeout = setTimeout(() => {
+          endUserInteraction();
+        }, 2000);
+      },
+      { passive: false }
+    );
+
+    window.addEventListener(
+      'touchstart',
+      (e: TouchEvent) => {
+        touchStartX = e.touches[0].clientX;
+        touchLastX = touchStartX;
+        startUserInteraction();
+      },
+      { passive: false }
+    );
+
+    window.addEventListener(
+      'touchmove',
+      (e: TouchEvent) => {
+        e.preventDefault();
+        const touchX = e.touches[0].clientX;
+        const deltaX = touchX - touchLastX;
+        touchLastX = touchX;
+
+        const touchStrength = Math.abs(deltaX) * 2;
+        targetDistortionFactor = Math.min(1.0, targetDistortionFactor + touchStrength);
+        targetPosition -= deltaX * settings.touchSensitivity * 2.5;
+
+        // フィルターの表示を開始
+        const filter = document.querySelector('.img__filter') as HTMLElement;
+        if (filter) {
+          filter.classList.add('visible');
+        }
+      },
+      { passive: false }
+    );
+
+    window.addEventListener('touchend', () => {
+      const velocity = (touchLastX - touchStartX) * 0.0125;
+      if (Math.abs(velocity) > 0.3) {
+        targetDistortionFactor = Math.min(
+          1.0,
+          Math.abs(velocity) * 12.5 * settings.distortionSensitivity
+        );
+
+        // フィルター効果を速度に基づいて設定
+        const filter = document.querySelector('.img__filter') as HTMLElement;
+        if (filter) {
+          filter.classList.add('visible');
+          const normalizedVelocity = Math.min(Math.abs(velocity), 1);
+          const initialOpacity = normalizedVelocity; // 最大値1
+          filter.style.opacity = initialOpacity.toString();
+
+          // 速度に基づいて減衰時間を設定（速いほど長く表示）
+          const decayDuration = Math.min(4000, Math.max(2500, Math.abs(velocity) * 3000));
+
+          // フィルターの不透明度を徐々に減少
+          let startTime = performance.now();
+          const animate = () => {
+            const currentTime = performance.now();
+            const elapsed = currentTime - startTime;
+            const progress = elapsed / decayDuration;
+
+            if (progress < 1) {
+              // イージング関数を追加してよりスムーズな減衰を実現
+              const easeOutProgress = 1 - Math.pow(1 - progress, 3);
+              const currentOpacity = initialOpacity * (1 - easeOutProgress);
+              filter.style.opacity = Math.max(0, currentOpacity).toString();
+              requestAnimationFrame(animate);
+            } else {
+              filter.style.opacity = '0';
+              setTimeout(() => {
+                filter.classList.remove('visible');
+              }, 500);
+            }
+          };
+
+          requestAnimationFrame(animate);
+        }
+      }
+      endUserInteraction();
+    });
+
+    // 画像ごとのテキスト情報を定義
+    const imageDescriptions: { [key: number]: string } = {
+      1: 'FUN IS COOL',
+      2: 'FUN IS COOL',
+      3: 'FUN IS COOL',
+      4: 'FUN IS COOL',
+      5: 'FUN IS COOL',
+      6: 'FUN IS COOL',
+      7: 'FUN IS COOL',
+      8: '08 / 250203 / SEVESKIG',
+      9: '09 / 250203 / SEVESKIG',
+      10: '10 / 250203 / SEVESKIG',
+      11: '11 / 250203 / SEVESKIG',
+      12: '12 / 250203 / SEVESKIG',
+      13: '13 / 250203 / SEVESKIG',
+      14: '14 / 250203 / SEVESKIG',
+      15: '15 / 250203 / SEVESKIG',
+      16: '16 / 2501015 / jisetsu',
+      17: '17 / 251015 / jisetsu',
+      18: '18 / 251015 / jisetsu',
+      19: '19 / 250417 / STORE',
+      20: '20 / 250417 / STORE',
+      21: '21 / 250417 / STORE',
+      22: '22 / 250417 / STORE',
+      23: '23 / 250417 / STORE',
+      24: '24 / 250417 / STORE',
+    };
+
+    const imgNameElement = document.querySelector('.img__name');
+    let currentCenterImageIndex = 0;
+
+    // 中央の画像インデックスを更新
+    const updateCenterImageIndex = () => {
+      if (!imgNameElement) return;
+
+      const centerX = 0;
+      let closestDistance = Infinity;
+      let closestIndex = 0;
+      let closestGroupIndex = 1;
+
+      Object.entries(slidesGroups).forEach(([groupKey, slides], groupIdx) => {
+        slides.forEach((slide, index) => {
+          const distance = Math.abs(slide.position.x);
+          if (distance < closestDistance) {
+            closestDistance = distance;
+            closestIndex = index;
+            closestGroupIndex = groupIdx + 1;
+          }
+        });
+      });
+
+      const actualImageIndex = closestIndex + 1 + (closestGroupIndex - 1) * 6; // 6枚ごとのグループに変更
+      if (currentCenterImageIndex !== actualImageIndex) {
+        currentCenterImageIndex = actualImageIndex;
+        const description = imageDescriptions[actualImageIndex] || `Image ${actualImageIndex}`;
+        imgNameElement.textContent = description;
+      }
+    };
+
+    // アイドル状態の管理関数
+    const startIdleTimer = (): void => {
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        isIdle = true;
+        showIdleEffects();
+      }, IDLE_TIMEOUT);
+    };
+
+    const resetIdleTimer = (): void => {
+      if (isIdle) {
+        hideIdleEffects();
+      }
+      isIdle = false;
+      startIdleTimer();
+    };
+
+    const showIdleEffects = (): void => {
+      if (!idleMessageElement || !currentTimeElement) return;
+
+      idleMessageElement.style.display = 'block';
+      setTimeout(() => {
+        idleMessageElement.classList.add('visible');
+      }, 0);
+
+      updateCurrentTime();
+      const timeInterval = setInterval(updateCurrentTime, 1000);
+      idleMessageElement.dataset.timeInterval = timeInterval.toString();
+    };
+
+    const hideIdleEffects = (): void => {
+      if (!idleMessageElement) return;
+
+      idleMessageElement.classList.remove('visible');
+      setTimeout(() => {
+        idleMessageElement.style.display = 'none';
+      }, 500);
+
+      const timeInterval = parseInt(idleMessageElement.dataset.timeInterval || '0');
+      if (timeInterval) clearInterval(timeInterval);
+    };
+
+    const updateCurrentTime = (): void => {
+      if (!currentTimeElement) return;
+      const now = new Date();
+      const hours = now.getHours().toString().padStart(2, '0');
+      const minutes = now.getMinutes().toString().padStart(2, '0');
+      const seconds = now.getSeconds().toString().padStart(2, '0');
+      currentTimeElement.textContent = `${hours}:${minutes}:${seconds}`;
+    };
+
+    // イベントリスナーの追加
+    const userInteractionEvents = ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart'];
+    userInteractionEvents.forEach(eventName => {
+      window.addEventListener(eventName, resetIdleTimer);
+    });
+
+    // 初期タイマーの開始
     startIdleTimer();
-  };
 
-  const showIdleEffects = (): void => {
-    if (!idleMessageElement || !currentTimeElement) return;
+    // 必ず高解像度テクスチャを事前に読み込む
+    Object.values(slidesGroups).forEach(slides => {
+      slides.forEach(slide => {
+        const material = slide.material as THREE.ShaderMaterial;
+        if (!material.uniforms.uTexture.value) {
+          const imageIndex = slide.userData.currentImageIndex;
+          const img = new Image();
+          img.src = `/img${imageIndex}.webp`;
+        }
+      });
+    });
 
-    idleMessageElement.style.display = 'block';
+    // 初期表示の設定 - animationTimingsを使用した遅延表示
+    // デフォルトでは非表示
+    Object.values(canvases).forEach(canvas => {
+      canvas.style.opacity = '0';
+      canvas.style.visibility = 'hidden';
+    });
+
+    // シーンの初期レンダリングを強制
+    Object.values(renderers).forEach((renderer, index) => {
+      const scene = scenes[`scene${index + 1}` as keyof typeof scenes];
+      renderer.render(scene, camera);
+    });
+
+    // キャンバスフェードインのタイミングで最初のキャンバスを表示
     setTimeout(() => {
-      idleMessageElement.classList.add('visible');
-    }, 0);
+      canvases.canvas1.style.visibility = 'visible';
+      requestAnimationFrame(() => {
+        canvases.canvas1.classList.add('visible');
+        canvases.canvas1.style.opacity = '1';
+        document.querySelector('.img__name')?.classList.add('visible');
+      });
+    }, animationTimings.threeScene.canvasFadeIn);
 
-    updateCurrentTime();
-    const timeInterval = setInterval(updateCurrentTime, 1000);
-    idleMessageElement.dataset.timeInterval = timeInterval.toString();
-  };
-
-  const hideIdleEffects = (): void => {
-    if (!idleMessageElement) return;
-
-    idleMessageElement.classList.remove('visible');
+    // 初期スライドインアニメーション - 遅延付き
     setTimeout(() => {
-      idleMessageElement.style.display = 'none';
-    }, 500);
+      targetPosition = -slideUnit * 6;
+      targetDistortionFactor = 1;
+      const filter = document.querySelector('.img__filter') as HTMLElement;
+      if (filter) {
+        filter.classList.add('visible');
+        filter.style.opacity = '0.5';
+        setTimeout(() => {
+          filter.style.opacity = '0';
+          setTimeout(() => {
+            filter.classList.remove('visible');
+          }, 1000);
+        }, animationTimings.threeScene.initialAnimation.duration);
+      }
+    }, animationTimings.threeScene.initialAnimation.startDelay);
 
-    const timeInterval = parseInt(idleMessageElement.dataset.timeInterval || '0');
-    if (timeInterval) clearInterval(timeInterval);
-  };
+    // 自動スクロールの開始
+    setTimeout(() => {
+      startAutoSlide();
+    }, animationTimings.threeScene.initialAnimation.startDelay + animationTimings.threeScene.initialAnimation.autoScrollDelay);
 
-  const updateCurrentTime = (): void => {
-    if (!currentTimeElement) return;
-    const now = new Date();
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    const seconds = now.getSeconds().toString().padStart(2, '0');
-    currentTimeElement.textContent = `${hours}:${minutes}:${seconds}`;
-  };
+    // 強制的に再レンダリングを行うバックアップタイマー
+    setTimeout(() => {
+      console.log('Force re-rendering all canvases');
+      Object.values(renderers).forEach((renderer, index) => {
+        const scene = scenes[`scene${index + 1}` as keyof typeof scenes];
+        renderer.render(scene, camera);
+      });
 
-  // イベントリスナーの追加
-  const userInteractionEvents = ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart'];
-  userInteractionEvents.forEach(eventName => {
-    window.addEventListener(eventName, resetIdleTimer);
-  });
+      // キャンバスが表示されていない場合は強制的に表示
+      if (window.getComputedStyle(canvases.canvas1).opacity === '0') {
+        console.warn('Canvas not visible, forcing visibility');
+        canvases.canvas1.classList.add('visible');
+        canvases.canvas1.style.opacity = '1';
+      }
+    }, animationTimings.threeScene.initialAnimation.startDelay + 5000);
 
-  // 初期タイマーの開始
-  startIdleTimer();
-
-  // アニメーションを開始
-  animate(performance.now());
-  startAutoSlide(); // 自動スライドを開始
+    // アニメーションを開始
+    animate(performance.now());
+  }
 </script>

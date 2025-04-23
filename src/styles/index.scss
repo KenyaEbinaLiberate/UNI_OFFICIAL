@@ -32,7 +32,7 @@ $splashDelay: 3.8s;
       filter: brightness(1) grayscale(0) invert(0);
     }
     h1 {
-      clip-path: inset(0 100% 0 0);
+      opacity: 0;
     }
 
     .head__wrap {
@@ -777,6 +777,7 @@ $splashDelay: 3.8s;
     transition: all 0.5s ease-in-out;
     opacity: 0;
     backdrop-filter: blur(16px);
+    -webukit-backdrop-filter: blur(16px);
     pointer-events: none;
   }
 
