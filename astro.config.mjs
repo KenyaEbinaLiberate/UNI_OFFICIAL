@@ -15,6 +15,9 @@ export default defineConfig({
     domains: ['uni-liberate.group'],
   },
   vite: {
+    server: {
+      allowedHosts: ['d895-2405-6580-bf60-600-f53f-a1bf-a765-7901.ngrok-free.app'],
+    },
     assetsInclude: ['**/*.mp3', '**/*.svg', '**/*.jpg', '**/*.png'],
     optimizeDeps: {
       include: [

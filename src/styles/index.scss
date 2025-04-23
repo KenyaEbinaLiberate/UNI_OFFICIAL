@@ -333,6 +333,42 @@ $splashDelay: 3.8s;
   }
 }
 
+.canvas__navigation {
+  position: fixed;
+  scale: 0.75;
+  opacity: 0;
+  bottom: 0;
+  transform: translateY(-10px);
+  right: 70px;
+  z-index: 10;
+  display: flex;
+  gap: 6px;
+  animation: fadeInAnm 0.6s ease-in-out 8.5s forwards 1;
+  @include smp {
+    transform: translateY(0);
+
+    gap: 4px;
+    right: 56px;
+  }
+}
+
+.nav-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba($white, 0.7);
+  padding: 9px;
+  color: $blue;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  border: 1px solid rgba($white, 1);
+  cursor: pointer;
+}
+
+.nav-button:hover {
+  transform: scale(1.05);
+}
+
 #musicPlayer:hover {
   transform: scale(1.05);
 }
@@ -345,7 +381,7 @@ $splashDelay: 3.8s;
   position: fixed;
   bottom: 20px;
   left: 20px;
-  width: calc(100% - 80px);
+  width: calc(100% - 150px);
   height: 32px;
   border-radius: 8px;
   background: rgba($white, 0.7);

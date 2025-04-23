@@ -15,10 +15,10 @@ import { animationTimings } from '../utils/animation-config';
 
 <div class="canvas__navigation">
   <button class="nav-button prev" aria-label="前のキャンバスへ">
-    <span>PREV</span>
+    <span><img src="/images/prev.svg" alt="前のキャンバスへ" /></span>
   </button>
   <button class="nav-button next" aria-label="次のキャンバスへ">
-    <span>NEXT</span>
+    <span><img src="/images/next.svg" alt="次のキャンバスへ" /></span>
   </button>
 </div>
 
@@ -118,43 +118,6 @@ import { animationTimings } from '../utils/animation-config';
   .img__name.visible {
     opacity: 1;
     visibility: visible;
-  }
-
-  .canvas__navigation {
-    position: fixed;
-    bottom: 40px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 20px;
-    z-index: 10;
-  }
-
-  .nav-button {
-    background: rgba(238, 238, 238, 0.8);
-    border: none;
-    padding: 12px 24px;
-    cursor: pointer;
-    font-family: 'Poppins', sans-serif;
-    font-size: 14px;
-    letter-spacing: 0.1em;
-    transition: all 0.3s ease;
-    backdrop-filter: blur(8px);
-  }
-
-  .nav-button:hover {
-    background: rgba(238, 238, 238, 1);
-  }
-
-  @media (max-width: 767px) {
-    .canvas__navigation {
-      bottom: 20px;
-    }
-
-    .nav-button {
-      padding: 8px 16px;
-      font-size: 12px;
-    }
   }
 </style>
 
@@ -434,6 +397,26 @@ import { animationTimings } from '../utils/animation-config';
   let currentCanvasIndex = 1;
   let isTransitioning = false;
 
+  // 自動スライド設定
+  let autoSlideInterval: ReturnType<typeof setInterval> | null = null;
+  const startAutoSlide = () => {
+    if (autoSlideInterval) return;
+    autoSlideInterval = setInterval(() => {
+      if (!isUserInteracting) {
+        targetPosition -= 0.001;
+        targetDistortionFactor = 0.01; // 歪み効果もさらに小さく
+      }
+    }, 12); // より頻繁な更新（約60FPS）
+  };
+
+  const stopAutoSlide = () => {
+    if (autoSlideInterval) {
+      clearInterval(autoSlideInterval);
+      autoSlideInterval = null;
+    }
+  };
+
+  // switchCanvas関数を更新して自動スライドを維持する
   const switchCanvas = (direction: 'next' | 'prev') => {
     if (isTransitioning) return;
     isTransitioning = true;
@@ -451,6 +434,10 @@ import { animationTimings } from '../utils/animation-config';
     // 現在のキャンバスのスライドをリセット
     currentPosition = 0;
     targetPosition = 0;
+
+    // 自動スライドを一時停止
+    const wasAutoSliding = autoSlideInterval !== null;
+    stopAutoSlide();
 
     // マスクアニメーションを開始
     mask.classList.add('active');
@@ -488,9 +475,15 @@ import { animationTimings } from '../utils/animation-config';
       });
     }, halfDuration);
 
+    // マスクアニメーション終了時にクラスを削除し、自動スライドを再開
     setTimeout(() => {
       mask.classList.remove('active');
       isTransitioning = false;
+
+      // トランジション完了後に自動スライドを再開
+      if (wasAutoSliding || !isUserInteracting) {
+        startAutoSlide();
+      }
     }, transitionDuration);
 
     currentCanvasIndex = nextCanvasIndex;
@@ -553,6 +546,34 @@ import { animationTimings } from '../utils/animation-config';
 
     // 平均速度を計算
     const averageSpeed = velocityHistory.reduce((a, b) => a + b, 0) / velocityHistory.length;
+
+    // フィルターの不透明度を速度に基づいて更新
+    const filter = document.querySelector('.img__filter') as HTMLElement;
+    if (filter) {
+      // 速度を直接的に不透明度にマッピング
+      const normalizedSpeed = Math.min(averageSpeed / 1, 5);
+
+      // 現在の不透明度を取得
+      const currentOpacity = parseFloat(filter.style.opacity) || 0;
+
+      // より素早い補間（0.1）で目標の不透明度に向かって変化
+      const smoothedOpacity = THREE.MathUtils.lerp(currentOpacity, normalizedSpeed, 0.1);
+
+      // フィルターの表示/非表示を制御
+      if (smoothedOpacity > 0.01) {
+        filter.classList.add('visible');
+        filter.classList.add('fade-in');
+        filter.style.opacity = smoothedOpacity.toString();
+      } else {
+        filter.classList.remove('fade-in');
+        filter.style.opacity = '0';
+        setTimeout(() => {
+          if (parseFloat(filter.style.opacity) === 0) {
+            filter.classList.remove('visible');
+          }
+        }, 1000);
+      }
+    }
 
     // アニメーションが必要かどうかを判断
     const isAnimationNeeded =
@@ -673,10 +694,12 @@ import { animationTimings } from '../utils/animation-config';
   const startUserInteraction = () => {
     isUserInteracting = true;
     lastInteractionTime = performance.now();
+    stopAutoSlide();
   };
 
   const endUserInteraction = () => {
     isUserInteracting = false;
+    startAutoSlide();
   };
 
   // イベントリスナーを追加
@@ -921,4 +944,5 @@ import { animationTimings } from '../utils/animation-config';
 
   // アニメーションを開始
   animate(performance.now());
+  startAutoSlide(); // 自動スライドを開始
 </script>
