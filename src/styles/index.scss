@@ -476,7 +476,9 @@ $splashDelay: 3.8s;
   &.is__open {
     padding: 16px 16px 48px;
     background: $white;
-    width: calc(100% - 60px);
+    @include smp {
+      width: calc(100% - 60px);
+    }
 
     .menu__wrap {
       display: flex;
